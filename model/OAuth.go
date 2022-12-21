@@ -1,10 +1,6 @@
 package model
 
-type Request struct {
-	Error   bool   `json:"error"`
-	Message string `json:"message"`
-}
-
+// AuthaUser structure represents user that tries to connect
 type AuthaUser struct {
 	Username string `json:"username"`
 	Vanity   string `json:"vanity"`
