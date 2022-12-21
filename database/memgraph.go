@@ -2,18 +2,22 @@ package database
 
 import (
 	"context"
+	"os"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
-var ctx = context.Background()
-var driver, _ = neo4j.NewDriverWithContext("bolt://localhost:7687", neo4j.BasicAuth("", "", ""))
-var Session = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+var (
+	ctx       = context.Background()
+	driver, _ = neo4j.NewDriverWithContext("bolt://localhost:7687", neo4j.BasicAuth(os.Getenv("GRAPH_USERNAME"), os.Getenv("GRAPH_PASSWORD"), ""))
+	Session   = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+)
 
 // CREATE (:User {vanity: "arianagrande"})-[:Subscribers]->(:User {vanity: "realhinome"})-[:Likes]->(:Post {id: "1055103553418567740"}); => Create user - ArianaGrande will be subscribed to RealHinome
 // MATCH (:User) -[:Subscribers]->(d:User) WHERE d.vanity = 'realhinome' RETURN count(*); => GET total followers
 // MATCH (n:User) -[:Subscribers]-(d:User) WHERE n.vanity = 'arianagrande' RETURN count(*); => GET total following
 
+// CreateUser allows to create a new user into the graph database
 func CreateUser() (string, error) {
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
