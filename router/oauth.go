@@ -111,6 +111,8 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 				})
 			}
 
+			database.CreateUser(user.Vanity)
+
 			w.WriteHeader(http.StatusOK)
 			json_encoder.Encode(model.RequestError{
 				Error:   false,
