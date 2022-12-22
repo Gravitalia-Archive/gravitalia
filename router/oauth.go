@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Gravitalia/gravitalia/database"
+	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
 )
 
@@ -101,7 +102,19 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 			user := model.AuthaUser{}
 			json.Unmarshal(body, &user)
 
-			// Create a JWT token with user.Vanity
+			token, err := helpers.CreateToken(user.Vanity)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(model.RequestError{
+					Error:   true,
+					Message: "Internal error:" + err.Error(),
+				})
+			}
+
+			json.NewEncoder(w).Encode(model.RequestError{
+				Error:   false,
+				Message: token,
+			})
 		}
 	} else {
 		state := randomString(24)
