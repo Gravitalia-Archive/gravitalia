@@ -15,6 +15,7 @@ func main() {
 	godotenv.Load()
 
 	// Create routes
+	http.HandleFunc("/", router.Index)
 	http.HandleFunc("/callback", router.OAuth)
 	http.HandleFunc("/v1/new", router.New)
 
