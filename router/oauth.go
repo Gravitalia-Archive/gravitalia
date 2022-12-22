@@ -60,10 +60,13 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if req.URL.Query().Has("state") && req.URL.Query().Has("code") {
+		w.WriteHeader(http.StatusInternalServerError)
+		json_encoder := json.NewEncoder(w)
+
 		val, err := database.Mem.Get(req.URL.Query().Get("state"))
 		if err != nil || string(val.Value) != "ok" {
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(model.RequestError{
+			json_encoder.Encode(model.RequestError{
 				Error:   true,
 				Message: "Invalid state",
 			})
@@ -82,8 +85,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 
 			body, err := makeRequest(os.Getenv("OAUTH_API")+"/oauth2/token", "POST", bytes.NewBuffer(postBody), "")
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(model.RequestError{
+				json_encoder.Encode(model.RequestError{
 					Error:   true,
 					Message: "Internal error:" + err.Error(),
 				})
@@ -93,8 +95,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 
 			body, err = makeRequest(os.Getenv("OAUTH_API")+"/users/@me", "GET", nil, data.Message)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(model.RequestError{
+				json_encoder.Encode(model.RequestError{
 					Error:   true,
 					Message: "Internal error:" + err.Error(),
 				})
@@ -104,14 +105,14 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 
 			token, err := helpers.CreateToken(user.Vanity)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(model.RequestError{
+				json_encoder.Encode(model.RequestError{
 					Error:   true,
 					Message: "Internal error:" + err.Error(),
 				})
 			}
 
-			json.NewEncoder(w).Encode(model.RequestError{
+			w.WriteHeader(http.StatusOK)
+			json_encoder.Encode(model.RequestError{
 				Error:   false,
 				Message: token,
 			})
