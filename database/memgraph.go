@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/Gravitalia/gravitalia/model"
@@ -91,4 +92,30 @@ func GetUserStats(vanity string) (model.Stats, error) {
 		Followers: followers.(int64),
 		Following: follwing.(int64),
 	}, nil
+}
+
+func GetUserPost(vanity string) ([]model.Post, error) {
+	var list []model.Post
+
+	post, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (interface{}, error) {
+		result, err := transaction.Run(ctx,
+			"MATCH (p:Post) -[:Created]->(u:User) WHERE u.vanity = $vanity RETURN p;",
+			map[string]any{"vanity": vanity})
+		if err != nil {
+			return nil, err
+		}
+
+		if result.Next(ctx) {
+			return result.Record().Values, nil
+		}
+
+		return nil, result.Err()
+	})
+	if err != nil {
+		return list, err
+	}
+
+	fmt.Println(post)
+
+	return list, nil
 }
