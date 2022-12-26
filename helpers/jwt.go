@@ -11,7 +11,14 @@ import (
 
 // CreateToken allows to create JWT tokens
 func CreateToken(vanity string) (string, error) {
-	signer, err := jwt.NewSignerHS(jwt.HS512, []byte(os.Getenv("JWT_SECRET")))
+	var key string
+	if os.Getenv("JWT_SECRET") != "" {
+		key = os.Getenv("JWT_SECRET")
+	} else {
+		key = "secret"
+	}
+
+	signer, err := jwt.NewSignerHS(jwt.HS512, []byte(key))
 	if err != nil {
 		return "", err
 	}
@@ -32,7 +39,14 @@ func CreateToken(vanity string) (string, error) {
 }
 
 func CheckToken(token string) (string, error) {
-	verifier, err := jwt.NewVerifierHS(jwt.HS512, []byte(os.Getenv("JWT_SECRET")))
+	var key string
+	if os.Getenv("JWT_SECRET") != "" {
+		key = os.Getenv("JWT_SECRET")
+	} else {
+		key = "secret"
+	}
+
+	verifier, err := jwt.NewVerifierHS(jwt.HS512, []byte(key))
 	if err != nil {
 		return "", err
 	}
