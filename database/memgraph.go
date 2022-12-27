@@ -54,7 +54,7 @@ func CreateUser(vanity string) (string, error) {
 func GetUserStats(vanity string) (model.Stats, error) {
 	followers, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (interface{}, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (:User) -[:Subscribers]->(d:User) WHERE d.vanity = $vanity RETURN count(*);",
+			"MATCH (:User) -[:Subscribers]->(d:User) WHERE d.vanity = $vanity RETURN count(*) QUERY MEMORY LIMIT 10 KB;;",
 			map[string]any{"vanity": vanity})
 		if err != nil {
 			return nil, err
@@ -72,7 +72,7 @@ func GetUserStats(vanity string) (model.Stats, error) {
 
 	follwing, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (interface{}, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (n:User) -[:Subscribers]->(:User) WHERE n.vanity = $vanity RETURN count(*);",
+			"MATCH (n:User) -[:Subscribers]->(:User) WHERE n.vanity = $vanity RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
 			map[string]any{"vanity": vanity})
 		if err != nil {
 			return nil, err
@@ -99,7 +99,7 @@ func GetUserPost(vanity string) ([]model.Post, error) {
 
 	post, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (interface{}, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (p:Post) -[:Created]->(u:User) WHERE u.vanity = $vanity RETURN p;",
+			"MATCH (p:Post) -[:Created]->(u:User) WHERE u.vanity = $vanity RETURN p ORDER BY p.id LIMIT 12 QUERY MEMORY LIMIT 5 KB;",
 			map[string]any{"vanity": vanity})
 		if err != nil {
 			return nil, err
