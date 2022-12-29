@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"time"
 
 	"log"
 
@@ -26,5 +27,13 @@ func main() {
 
 	log.Println("Server is starting on port", os.Getenv("PORT"))
 	// Create web server
-	http.ListenAndServe(":"+os.Getenv("PORT"), nil)
+	server := &http.Server{
+		Addr:              ":" + os.Getenv("PORT"),
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+
+	err := server.ListenAndServe()
+	if err != nil {
+		panic(err)
+	}
 }
