@@ -6,6 +6,7 @@ import (
 
 	"log"
 
+	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/router"
 	"github.com/joho/godotenv"
 )
@@ -19,6 +20,9 @@ func main() {
 	http.HandleFunc("/callback", router.OAuth)
 	http.HandleFunc("/v1/new", router.New)
 	http.HandleFunc("/users/", router.Users)
+
+	// Init every helpers function
+	helpers.Init()
 
 	log.Println("Server is starting on port", os.Getenv("PORT"))
 	// Create web server
