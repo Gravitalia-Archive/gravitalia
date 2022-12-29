@@ -3,9 +3,11 @@ package main
 import (
 	"net/http"
 	"os"
+	"time"
 
 	"log"
 
+	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/router"
 	"github.com/joho/godotenv"
 )
@@ -20,7 +22,18 @@ func main() {
 	http.HandleFunc("/v1/new", router.New)
 	http.HandleFunc("/users/", router.Users)
 
+	// Init every helpers function
+	helpers.Init()
+
 	log.Println("Server is starting on port", os.Getenv("PORT"))
 	// Create web server
-	http.ListenAndServe(":"+os.Getenv("PORT"), nil)
+	server := &http.Server{
+		Addr:              ":" + os.Getenv("PORT"),
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+
+	err := server.ListenAndServe()
+	if err != nil {
+		panic(err)
+	}
 }
