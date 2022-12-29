@@ -1,13 +1,12 @@
 package model
 
 type Stats struct {
-	Followers int64
-	Following int64
+	Followers int64 `json:"followers"`
+	Following int64 `json:"following"`
 }
 
 type Post struct {
-	Id          string
-	Description string
-	Text        string
-	Tags        []string
+	Id          string `json:"id"`
+	Description string `json:"description"`
+	Text        string `json:"text"`
 }
