@@ -5,6 +5,6 @@ import (
 	"net/http"
 )
 
-func Index(w http.ResponseWriter, req *http.Request) {
+func Index(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprintf(w, "OK")
 }
