@@ -91,7 +91,8 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 				})
 				return
 			}
-			data := model.RequestError{}
+			var data model.RequestError
+
 			json.Unmarshal(body, &data)
 
 			body, err = makeRequest(os.Getenv("OAUTH_API")+"/users/@me", "GET", nil, data.Message)
@@ -102,7 +103,8 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 				})
 				return
 			}
-			user := model.AuthaUser{}
+			var user model.AuthaUser
+
 			json.Unmarshal(body, &user)
 
 			token, err := helpers.CreateToken(user.Vanity)
