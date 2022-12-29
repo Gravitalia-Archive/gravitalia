@@ -89,6 +89,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 					Error:   true,
 					Message: "Internal error:" + err.Error(),
 				})
+				return
 			}
 			data := model.RequestError{}
 			json.Unmarshal(body, &data)
@@ -99,6 +100,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 					Error:   true,
 					Message: "Internal error:" + err.Error(),
 				})
+				return
 			}
 			user := model.AuthaUser{}
 			json.Unmarshal(body, &user)
@@ -109,6 +111,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 					Error:   true,
 					Message: "Internal error:" + err.Error(),
 				})
+				return
 			}
 
 			database.CreateUser(user.Vanity)
