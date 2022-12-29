@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Gravitalia/gravitalia/database"
+	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
 )
 
@@ -14,6 +15,19 @@ func Users(w http.ResponseWriter, req *http.Request) {
 	jsonEncoder := json.NewEncoder(w)
 
 	username := strings.TrimPrefix(req.URL.Path, "/users/")
+	if username == "@me" && req.Header.Get("authorization") != "" {
+		vanity, err := helpers.CheckToken(req.Header.Get("authorization"))
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: "Invalid token",
+			})
+			return
+		}
+		username = vanity
+	}
+
 	stats, err := database.GetUserStats(username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
