@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"os"
@@ -46,7 +45,7 @@ func makeRequest(url string, method string, reqBody io.Reader, authHeader string
 		return nil, errors.New("unable to make request")
 	}
 	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, errors.New("unable to read request")
 	}
@@ -92,8 +91,14 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 			var data model.RequestError
-
 			json.Unmarshal(body, &data)
+			if data.Error {
+				json_encoder.Encode(model.RequestError{
+					Error:   true,
+					Message: "Invalid code",
+				})
+				return
+			}
 
 			body, err = makeRequest(os.Getenv("OAUTH_API")+"/users/@me", "GET", nil, data.Message)
 			if err != nil {
@@ -104,8 +109,14 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 			var user model.AuthaUser
-
 			json.Unmarshal(body, &user)
+			if user.Vanity == "" {
+				json_encoder.Encode(model.RequestError{
+					Error:   true,
+					Message: "Invalid code",
+				})
+				return
+			}
 
 			token, err := helpers.CreateToken(user.Vanity)
 			if err != nil {
@@ -118,7 +129,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 
 			database.CreateUser(user.Vanity)
 
-			w.WriteHeader(http.StatusOK)
+			//w.WriteHeader(http.StatusOK)
 			json_encoder.Encode(model.RequestError{
 				Error:   false,
 				Message: token,
