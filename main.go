@@ -18,6 +18,7 @@ func main() {
 	http.HandleFunc("/", router.Index)
 	http.HandleFunc("/callback", router.OAuth)
 	http.HandleFunc("/v1/new", router.New)
+	http.HandleFunc("/users/", router.Users)
 
 	log.Println("Server is starting on port", os.Getenv("PORT"))
 	// Create web server
