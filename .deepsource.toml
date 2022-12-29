@@ -2,7 +2,7 @@ version = 1
 
 [[analyzers]]
 name = "go"
-enabled = true
+enabled = false
 
   [analyzers.meta]
   import_root = "github.com/Gravitalia/gravitalia"
