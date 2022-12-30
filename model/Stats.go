@@ -9,4 +9,5 @@ type Post struct {
 	Id          string `json:"id"`
 	Description string `json:"description"`
 	Text        string `json:"text"`
+	Like        int64  `json:"like"`
 }
