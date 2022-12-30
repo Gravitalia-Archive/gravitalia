@@ -107,7 +107,7 @@ func GetUserPost(vanity string, skip uint8) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User) -[:Create]->(p:Post) WHERE u.vanity = $vanity RETURN p.id, p.description, p.text ORDER BY p.id SKIP $skip LIMIT 12 QUERY MEMORY LIMIT 5 KB;",
+			"MATCH (u:User) -[:Create]->(p:Post)<-[:Like]-(l:User) WHERE u.vanity = 'realhinome' WITH p, count(l) as numLikes RETURN p.id, p.description, p.text, numLikes ORDER BY p.id SKIP 0 LIMIT 12 QUERY MEMORY LIMIT 5 KB;",
 			map[string]any{"vanity": vanity, "skip": skip * 12})
 		if err != nil {
 			return nil, err
@@ -117,7 +117,7 @@ func GetUserPost(vanity string, skip uint8) ([]model.Post, error) {
 			incr := 0
 			pos := 0
 			for i := 0; i < len(result.Record().Values); i++ {
-				if i%3 == 0 && i != 0 {
+				if i%4 == 0 && i != 0 {
 					incr++
 					pos = 0
 				}
@@ -130,6 +130,9 @@ func GetUserPost(vanity string, skip uint8) ([]model.Post, error) {
 				}
 				if pos == 2 {
 					list[incr].Text = result.Record().Values[i].(string)
+				}
+				if pos == 3 {
+					list[incr].Like = result.Record().Values[i].(int64)
 				}
 				pos++
 			}
