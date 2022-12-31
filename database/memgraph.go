@@ -102,6 +102,8 @@ func GetUserStats(vanity string) (model.Stats, error) {
 	}, nil
 }
 
+// GetUserPost is a function for getting every posts of a user
+// and see their likes
 func GetUserPost(vanity string, skip uint8) ([]model.Post, error) {
 	var list []model.Post
 
@@ -148,9 +150,10 @@ func GetUserPost(vanity string, skip uint8) ([]model.Post, error) {
 	return list, nil
 }
 
+// UserSub allows a user to subscriber to another one
 func UserSub(vanity string, to_user string) (bool, error) {
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
-		result, err := transaction.Run(ctx, "MATCH (a:User)-[:Subscribers]->(b:User) WHERE a.vanity = $vanity AND b.vanity = $to RETURN a",
+		result, err := transaction.Run(ctx, "MATCH (a:User)-[:Subscribers]->(b:User) WHERE a.vanity = $vanity AND b.vanity = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
 			map[string]any{"vanity": vanity, "to": to_user})
 		if err != nil {
 			return nil, err
@@ -186,6 +189,32 @@ func UserSub(vanity string, to_user string) (bool, error) {
 			}
 		} else {
 			return nil, errors.New("invalid user")
+		}
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// UserUnSub allows a user to unsubscriber to another one
+func UserUnSub(vanity string, to_user string) (bool, error) {
+	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+		result, err := transaction.Run(ctx, "MATCH (a:User)-[r:Subscribers]->(b:User) WHERE a.vanity = $vanity AND b.vanity = $to DELETE r QUERY MEMORY LIMIT 1 KB;",
+			map[string]any{"vanity": vanity, "to": to_user})
+		if err != nil {
+			return nil, err
+		}
+
+		if result.Next(ctx) {
+			if result.Record().Values[0] == nil {
+				return true, nil
+			} else {
+				return false, errors.New("already subscribed")
+			}
+		} else {
+			return true, nil
 		}
 	})
 	if err != nil {
