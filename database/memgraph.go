@@ -80,7 +80,7 @@ func GetUserStats(vanity string) (model.Stats, error) {
 
 	follwing, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (interface{}, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (n:User) -[:Subscribers]->(:User) WHERE n.vanity = $vanity RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
+			"MATCH (n:User) -[:Subscribers]->(:User) WHERE n.vanity = 'realhinome' RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
 			map[string]any{"vanity": vanity})
 		if err != nil {
 			return nil, err
@@ -146,4 +146,51 @@ func GetUserPost(vanity string, skip uint8) ([]model.Post, error) {
 	}
 
 	return list, nil
+}
+
+func UserSub(vanity string, to_user string) (bool, error) {
+	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+		result, err := transaction.Run(ctx, "MATCH (a:User)-[:Subscribers]->(b:User) WHERE a.vanity = $vanity AND b.vanity = $to RETURN a",
+			map[string]any{"vanity": vanity, "to": to_user})
+		if err != nil {
+			return nil, err
+		}
+
+		if result.Next(ctx) {
+			if result.Record().Values[0] == nil {
+				return true, nil
+			} else {
+				return false, errors.New("already subscribed")
+			}
+		} else {
+			return true, nil
+		}
+	})
+	if err != nil {
+		return false, err
+	}
+
+	_, err = Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+		result, err := transaction.Run(ctx,
+			"MATCH (a:User), (b:User) WHERE a.vanity = $vanity AND b.vanity = $to CREATE (a)-[r:Subscribers]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
+			map[string]any{"vanity": vanity, "to": to_user})
+		if err != nil {
+			return nil, err
+		}
+
+		if result.Next(ctx) {
+			if result.Record().Values[0] == nil {
+				return nil, errors.New("invalid user")
+			} else {
+				return true, nil
+			}
+		} else {
+			return nil, errors.New("invalid user")
+		}
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
