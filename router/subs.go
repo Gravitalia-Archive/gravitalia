@@ -10,6 +10,7 @@ import (
 	"github.com/Gravitalia/gravitalia/model"
 )
 
+// Subscribers is a route for allow users to subscribe to each other
 func Subscribers(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json_encoder := json.NewEncoder(w)
@@ -62,17 +63,24 @@ func Subscribers(w http.ResponseWriter, req *http.Request) {
 	}
 
 	is_valid, err := database.UserSub(vanity, getbody.User_id)
-	if err != nil || !is_valid {
+
+	if err != nil && err.Error() == "already subscribed" {
+		database.UserUnSub(vanity, getbody.User_id)
+		json_encoder.Encode(model.RequestError{
+			Error:   false,
+			Message: vanity + " stopped to follow " + getbody.User_id,
+		})
+	} else if err != nil || !is_valid {
 		w.WriteHeader(http.StatusBadRequest)
 		json_encoder.Encode(model.RequestError{
 			Error:   true,
 			Message: err.Error(),
 		})
 		return
+	} else {
+		json_encoder.Encode(model.RequestError{
+			Error:   false,
+			Message: vanity + " now follow " + getbody.User_id,
+		})
 	}
-
-	json_encoder.Encode(model.RequestError{
-		Error:   false,
-		Message: vanity + " now follow " + getbody.User_id,
-	})
 }
