@@ -80,7 +80,7 @@ func GetUserStats(vanity string) (model.Stats, error) {
 
 	follwing, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (interface{}, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (n:User) -[:Subscribers]->(:User) WHERE n.vanity = 'realhinome' RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
+			"MATCH (n:User) -[:Subscribers]->(:User) WHERE n.vanity = $vanity RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
 			map[string]any{"vanity": vanity})
 		if err != nil {
 			return nil, err
@@ -107,7 +107,7 @@ func GetUserPost(vanity string, skip uint8) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User) -[:Create]->(p:Post)<-[:Like]-(l:User) WHERE u.vanity = 'realhinome' WITH p, count(l) as numLikes RETURN p.id, p.description, p.text, numLikes ORDER BY p.id SKIP 0 LIMIT 12 QUERY MEMORY LIMIT 5 KB;",
+			"MATCH (u:User) -[:Create]->(p:Post)<-[:Like]-(l:User) WHERE u.vanity = $vanity WITH p, count(l) as numLikes RETURN p.id, p.description, p.text, numLikes ORDER BY p.id SKIP 0 LIMIT 12 QUERY MEMORY LIMIT 5 KB;",
 			map[string]any{"vanity": vanity, "skip": skip * 12})
 		if err != nil {
 			return nil, err
