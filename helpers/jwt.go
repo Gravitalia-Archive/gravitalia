@@ -28,7 +28,7 @@ func CreateToken(vanity string) (string, error) {
 	token, err := jwt.NewBuilder(signer).Build(&jwt.RegisteredClaims{
 		Subject:   vanity,
 		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
-		ExpiresAt: jwt.NewNumericDate(time.Date(now.Year(), now.Month()+1, now.Day(), now.Hour(), now.Minute(), 0, 0, time.UTC)),
+		ExpiresAt: jwt.NewNumericDate(time.Date(now.Year(), now.Month(), now.Day()+7, now.Hour(), now.Minute(), 0, 0, time.UTC)),
 		Issuer:    "https://www.gravitalia.com",
 	})
 	if err != nil {
