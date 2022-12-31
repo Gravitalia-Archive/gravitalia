@@ -1,0 +1,21 @@
+version: "3"
+
+services:
+  graph:
+    image: memgraph
+    ports:
+      - "7687:7687"
+      - "7444:7444"
+      
+  mem:
+    image: memcached
+    ports:
+      - "11211:11211"
+     
+  rest:
+    build: .
+    ports:
+      - "8888:8888"
+    depends_on:
+      - graph
+      - mem
