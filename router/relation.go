@@ -27,12 +27,12 @@ func contains(s []string, str string) bool {
 // or like posts, depending on route chosen
 func Relation(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json_encoder := json.NewEncoder(w)
+	jsonEncoder := json.NewEncoder(w)
 
 	relation := strings.TrimPrefix(req.URL.Path, "/relation/")
 	if relation == "" || !contains([]string{"like", "subscribe", "block"}, relation) {
 		w.WriteHeader(http.StatusBadRequest)
-		json_encoder.Encode(model.RequestError{
+		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
 			Message: "Invalid relation type",
 		})
@@ -51,7 +51,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	var vanity string
 	if req.Header.Get("authorization") == "" {
 		w.WriteHeader(http.StatusUnauthorized)
-		json_encoder.Encode(model.RequestError{
+		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
 			Message: "Invalid token",
 		})
@@ -60,7 +60,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		data, err := helpers.CheckToken(req.Header.Get("authorization"))
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-			json_encoder.Encode(model.RequestError{
+			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
 				Message: "Invalid token",
 			})
@@ -74,7 +74,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json_encoder.Encode(model.RequestError{
+		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
 			Message: "Unable to get body",
 		})
@@ -86,7 +86,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 
 	if getbody.Id == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json_encoder.Encode(model.RequestError{
+		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
 			Message: "Invalid body",
 		})
@@ -97,19 +97,19 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 
 	if err != nil && strings.Contains(err.Error(), "already") {
 		database.UserUnRelation(vanity, getbody.Id, relation)
-		json_encoder.Encode(model.RequestError{
+		jsonEncoder.Encode(model.RequestError{
 			Error:   false,
 			Message: "OK: Deleted relation",
 		})
 	} else if err != nil || !is_valid {
 		w.WriteHeader(http.StatusBadRequest)
-		json_encoder.Encode(model.RequestError{
+		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
 			Message: err.Error(),
 		})
 		return
 	} else {
-		json_encoder.Encode(model.RequestError{
+		jsonEncoder.Encode(model.RequestError{
 			Error:   false,
 			Message: "OK: Create relation",
 		})
