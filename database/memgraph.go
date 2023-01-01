@@ -15,22 +15,6 @@ var (
 	Session   = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 )
 
-// CREATE CONSTRAINT ON (u:User) ASSERT u.id IS UNIQUE; => don't allow 2 users with same id
-// CREATE (:User {id: "realhinome"}); => Create user - Create account
-// CREATE (:User {id: "arianagrande"});
-// CREATE (:User {id: "abc"});
-// MATCH (a:User), (b:User) WHERE a.id = 'realhinome' AND b.id = 'arianagrande' CREATE (a)-[r:Subscriber]->(b) RETURN type(r); - A will follow B
-// MATCH (a:User), (b:User) WHERE a.id = 'abc' AND b.id = 'arianagrande' CREATE (a)-[r:Subscriber]->(b) RETURN type(r);
-// MATCH (a:User), (b:User) WHERE a.id = 'abc' AND b.id = 'realhinome' CREATE (a)-[r:Subscriber]->(b) RETURN type(r);
-// MATCH (:User) -[:Subscriber]->(d:User) WHERE d.id = 'arianagrande' RETURN count(*); => GET total followers
-// MATCH (n:User) -[:Subscriber]->(:User) WHERE n.id = 'arianagrande' RETURN count(*); => GET total following
-// CREATE (:Post {id: "12345678901234", tags: ["animals", "cat", "black"], text: "Look at my cat! Awe...", description: "A black cat on a chair"}); MATCH (a:User), (b:Post) WHERE a.id = 'realhinome' AND b.id = '12345678901234' CREATE (a)-[r:Create]->(b) RETURN type(r); - Create post
-// MATCH (a:User), (b:Post) WHERE a.id = 'realhinome' AND b.id = '12345678901234' CREATE (a)-[r:View]->(b) RETURN type(r); - User a saw the post
-// MATCH (a:User), (b:Post) WHERE a.id = 'arianagrande' AND b.id = '12345678901234' CREATE (a)-[r:View]->(b) RETURN type(r);
-// MATCH (a:User), (b:Post) WHERE a.id = 'realhinome' AND b.id = '12345678901234' CREATE (a)-[r:Like]->(b) RETURN type(r); - User a likes b post
-// MATCH (n:User) -[:Create]->(p:Post) WHERE n.id = 'realhinome' RETURN p; - get post
-// MATCH (a:User), (b:User) WHERE a.id = 'realhinome' AND b.id = 'abc' CREATE (a)-[r:Block]->(b) RETURN type(r); - user a block b user
-
 // CreateUser allows to create a new user into the graph database
 func CreateUser(id string) (string, error) {
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
