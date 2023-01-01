@@ -48,12 +48,10 @@ func Subscribers(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var getbody struct {
-		User_id string `json:"user_id"`
-	}
+	var getbody model.SetBody
 	json.Unmarshal(body, &getbody)
 
-	if getbody.User_id == "" {
+	if getbody.Id == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json_encoder.Encode(model.RequestError{
 			Error:   true,
@@ -62,13 +60,13 @@ func Subscribers(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	is_valid, err := database.UserSub(vanity, getbody.User_id)
+	is_valid, err := database.UserRelation(vanity, getbody.Id, "Subscriber")
 
-	if err != nil && err.Error() == "already subscribed" {
-		database.UserUnSub(vanity, getbody.User_id)
+	if err != nil && err.Error() == "already Subscribered" {
+		database.UserUnRelation(vanity, getbody.Id, "Subscriber")
 		json_encoder.Encode(model.RequestError{
 			Error:   false,
-			Message: vanity + " stopped to follow " + getbody.User_id,
+			Message: vanity + " stopped to follow " + getbody.Id,
 		})
 	} else if err != nil || !is_valid {
 		w.WriteHeader(http.StatusBadRequest)
@@ -80,7 +78,7 @@ func Subscribers(w http.ResponseWriter, req *http.Request) {
 	} else {
 		json_encoder.Encode(model.RequestError{
 			Error:   false,
-			Message: vanity + " now follow " + getbody.User_id,
+			Message: vanity + " now follow " + getbody.Id,
 		})
 	}
 }
