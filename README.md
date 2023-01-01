@@ -11,7 +11,7 @@
 > Memgraph is an in-memory graph database compatible with Neo4j
 
 Used for posts (*photos*), users and their edges.
-<img src="https://media.discordapp.net/attachments/844241319165558803/1057767661976690799/Capture_decran_2022-12-28_a_22.10.47.png" />
+<img src="https://media.discordapp.net/attachments/844241319165558803/1059145954273546310/Capture_decran_2023-01-01_a_17.27.11.png?width=1577&height=995" />
 
 ## Memcached
 > Memcached is a key-value in-memory database
