@@ -15,12 +15,11 @@ var (
 	Session   = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 )
 
-// CreateUser allows to create a new user into the graph database
-func CreateUser(id string) (string, error) {
-	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+func makeRequest(query string, params map[string]any) (any, error) {
+	data, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"CREATE (:User {id: $id});",
-			map[string]any{"id": id})
+			query,
+			params)
 		if err != nil {
 			return nil, err
 		}
@@ -31,6 +30,16 @@ func CreateUser(id string) (string, error) {
 
 		return nil, result.Err()
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+// CreateUser allows to create a new user into the graph database
+func CreateUser(id string) (string, error) {
+	_, err := makeRequest("CREATE (:User {id: $id});", map[string]any{"id": id})
 	if err != nil {
 		return "", err
 	}
@@ -40,42 +49,14 @@ func CreateUser(id string) (string, error) {
 
 // GetUserStats returns subscriptions and Subscriber of the desired user
 func GetUserStats(id string) (model.Stats, error) {
-	followers, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (interface{}, error) {
-		result, err := transaction.Run(ctx,
-			"MATCH (:User) -[:Subscriber]->(d:User) WHERE d.id = $id RETURN d.id, count(*) QUERY MEMORY LIMIT 10 KB;",
-			map[string]any{"id": id})
-		if err != nil {
-			return nil, err
-		}
-
-		if result.Next(ctx) {
-			if result.Record().Values[0] == nil {
-				return nil, errors.New("invalid user")
-			} else {
-				return result.Record().Values[1], nil
-			}
-		}
-
-		return nil, result.Err()
-	})
+	followers, err := makeRequest("MATCH (:User) -[:Subscriber]->(d:User) WHERE d.id = $id RETURN d.id, count(*) QUERY MEMORY LIMIT 10 KB;",
+		map[string]any{"id": id})
 	if err != nil {
 		return model.Stats{Followers: -1, Following: -1}, err
 	}
 
-	follwing, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (interface{}, error) {
-		result, err := transaction.Run(ctx,
-			"MATCH (n:User) -[:Subscriber]->(:User) WHERE n.id = $id RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
-			map[string]any{"id": id})
-		if err != nil {
-			return nil, err
-		}
-
-		if result.Next(ctx) {
-			return result.Record().Values[0], nil
-		}
-
-		return nil, result.Err()
-	})
+	follwing, err := makeRequest("MATMATCH (n:User) -[:Subscriber]->(:User) WHERE n.id = $id RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
+		map[string]any{"id": id})
 	if err != nil {
 		return model.Stats{Followers: -1, Following: -1}, err
 	}
@@ -144,47 +125,20 @@ func UserRelation(id string, to_user string, relation_type string) (bool, error)
 		content = "Post"
 	}
 
-	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
-		result, err := transaction.Run(ctx, "MATCH (a:User)-[:"+relation_type+"]->(b:"+content+") WHERE a.id = $id AND b.id = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
-			map[string]any{"id": id, "to": to_user})
-		if err != nil {
-			return nil, err
-		}
-
-		if result.Next(ctx) {
-			if result.Record().Values[0] == nil {
-				return true, nil
-			} else {
-				return false, errors.New("already " + relation_type + "ed")
-			}
-		} else {
-			return true, nil
-		}
-	})
+	res, err := makeRequest("MATCH (a:User)-[:"+relation_type+"]->(b:"+content+") WHERE a.id = $id AND b.id = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
+		map[string]any{"id": id, "to": to_user})
 	if err != nil {
 		return false, err
+	} else if res != nil {
+		return false, errors.New("already " + relation_type + "ed")
 	}
 
-	_, err = Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
-		result, err := transaction.Run(ctx,
-			"MATCH (a:User), (b:"+content+") WHERE a.id = $id AND b.id = $to CREATE (a)-[r:"+relation_type+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
-			map[string]any{"id": id, "to": to_user})
-		if err != nil {
-			return nil, err
-		}
-
-		if result.Next(ctx) {
-			if result.Record().Values[0] == nil {
-				return nil, errors.New("invalid " + content)
-			} else {
-				return true, nil
-			}
-		} else {
-			return nil, errors.New("invalid " + content)
-		}
-	})
+	res, err = makeRequest("MATCH (a:User), (b:"+content+") WHERE a.id = $id AND b.id = $to CREATE (a)-[r:"+relation_type+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
+		map[string]any{"id": id, "to": to_user})
 	if err != nil {
 		return false, err
+	} else if res == nil {
+		return false, errors.New("invalid " + content)
 	}
 
 	return true, nil
@@ -200,23 +154,8 @@ func UserUnRelation(id string, to_user string, relation_type string) (bool, erro
 		content = "Post"
 	}
 
-	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
-		result, err := transaction.Run(ctx, "MATCH (a:User)-[r:"+relation_type+"]->(b:"+content+") WHERE a.id = $id AND b.id = $to DELETE r QUERY MEMORY LIMIT 1 KB;",
-			map[string]any{"id": id, "to": to_user})
-		if err != nil {
-			return nil, err
-		}
-
-		if result.Next(ctx) {
-			if result.Record().Values[0] == nil {
-				return true, nil
-			} else {
-				return false, errors.New("already " + relation_type + "ed")
-			}
-		} else {
-			return true, nil
-		}
-	})
+	_, err := makeRequest("MATCH (a:User)-[r:"+relation_type+"]->(b:"+content+") WHERE a.id = $id AND b.id = $to DELETE r QUERY MEMORY LIMIT 1 KB;",
+		map[string]any{"id": id, "to": to_user})
 	if err != nil {
 		return false, err
 	}
