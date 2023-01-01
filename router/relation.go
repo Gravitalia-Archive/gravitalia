@@ -2,7 +2,6 @@ package router
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -31,7 +30,6 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	json_encoder := json.NewEncoder(w)
 
 	relation := strings.TrimPrefix(req.URL.Path, "/relation/")
-	fmt.Println(relation)
 	if relation == "" || !contains([]string{"like", "subscribe", "block"}, relation) {
 		w.WriteHeader(http.StatusBadRequest)
 		json_encoder.Encode(model.RequestError{
@@ -49,7 +47,6 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	case "block":
 		relation = "Block"
 	}
-	fmt.Println(relation)
 
 	var vanity string
 	if req.Header.Get("authorization") == "" {
