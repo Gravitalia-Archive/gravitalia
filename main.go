@@ -21,8 +21,7 @@ func main() {
 	http.HandleFunc("/callback", router.OAuth)
 	http.HandleFunc("/v1/new", router.New)
 	http.HandleFunc("/users/", router.Users)
-	http.HandleFunc("/subscriber", router.Subscribers)
-	http.HandleFunc("/like", router.Like)
+	http.HandleFunc("/relation/", router.Relation)
 
 	// Init every helpers function
 	helpers.Init()
