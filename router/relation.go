@@ -4,16 +4,49 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/Gravitalia/gravitalia/database"
 	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
 )
 
-// Subscribers is a route for allow users to subscribe to each other
-func Subscribers(w http.ResponseWriter, req *http.Request) {
+// contains allows to check if a map of string contains
+// a particular string
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Relation is a route for allow users to subscribe to each other
+// or like posts, depending on route chosen
+func Relation(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json_encoder := json.NewEncoder(w)
+
+	relation := strings.TrimPrefix(req.URL.Path, "/relation/")
+	if relation == "" || !contains([]string{"like", "subscribe", "block"}, relation) {
+		w.WriteHeader(http.StatusBadRequest)
+		json_encoder.Encode(model.RequestError{
+			Error:   true,
+			Message: "Invalid relation type",
+		})
+		return
+	}
+
+	switch relation {
+	case "like":
+		relation = "Like"
+	case "subscribe":
+		relation = "Subscriber"
+	case "block":
+		relation = "Block"
+	}
 
 	var vanity string
 	if req.Header.Get("authorization") == "" {
@@ -48,12 +81,10 @@ func Subscribers(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var getbody struct {
-		User_id string `json:"user_id"`
-	}
+	var getbody model.SetBody
 	json.Unmarshal(body, &getbody)
 
-	if getbody.User_id == "" {
+	if getbody.Id == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json_encoder.Encode(model.RequestError{
 			Error:   true,
@@ -62,13 +93,13 @@ func Subscribers(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	is_valid, err := database.UserSub(vanity, getbody.User_id)
+	is_valid, err := database.UserRelation(vanity, getbody.Id, relation)
 
-	if err != nil && err.Error() == "already subscribed" {
-		database.UserUnSub(vanity, getbody.User_id)
+	if err != nil && strings.Contains(err.Error(), "already") {
+		database.UserUnRelation(vanity, getbody.Id, relation)
 		json_encoder.Encode(model.RequestError{
 			Error:   false,
-			Message: vanity + " stopped to follow " + getbody.User_id,
+			Message: "OK: Deleted relation",
 		})
 	} else if err != nil || !is_valid {
 		w.WriteHeader(http.StatusBadRequest)
@@ -80,7 +111,7 @@ func Subscribers(w http.ResponseWriter, req *http.Request) {
 	} else {
 		json_encoder.Encode(model.RequestError{
 			Error:   false,
-			Message: vanity + " now follow " + getbody.User_id,
+			Message: "OK: Create relation",
 		})
 	}
 }

@@ -15,28 +15,11 @@ var (
 	Session   = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 )
 
-// CREATE CONSTRAINT ON (u:User) ASSERT u.vanity IS UNIQUE; => don't allow 2 users with same vanity
-// CREATE (:User {vanity: "realhinome"}); => Create user - Create account
-// CREATE (:User {vanity: "arianagrande"});
-// CREATE (:User {vanity: "abc"});
-// MATCH (a:User), (b:User) WHERE a.vanity = 'realhinome' AND b.vanity = 'arianagrande' CREATE (a)-[r:Subscribers]->(b) RETURN type(r); - A will follow B
-// MATCH (a:User), (b:User) WHERE a.vanity = 'abc' AND b.vanity = 'arianagrande' CREATE (a)-[r:Subscribers]->(b) RETURN type(r);
-// MATCH (a:User), (b:User) WHERE a.vanity = 'abc' AND b.vanity = 'realhinome' CREATE (a)-[r:Subscribers]->(b) RETURN type(r);
-// MATCH (:User) -[:Subscribers]->(d:User) WHERE d.vanity = 'arianagrande' RETURN count(*); => GET total followers
-// MATCH (n:User) -[:Subscribers]->(:User) WHERE n.vanity = 'arianagrande' RETURN count(*); => GET total following
-// CREATE (:Post {id: "12345678901234", tags: ["animals", "cat", "black"], text: "Look at my cat! Awe...", description: "A black cat on a chair"}); MATCH (a:User), (b:Post) WHERE a.vanity = 'realhinome' AND b.id = '12345678901234' CREATE (a)-[r:Create]->(b) RETURN type(r); - Create post
-// MATCH (a:User), (b:Post) WHERE a.vanity = 'realhinome' AND b.id = '12345678901234' CREATE (a)-[r:View]->(b) RETURN type(r); - User a saw the post
-// MATCH (a:User), (b:Post) WHERE a.vanity = 'arianagrande' AND b.id = '12345678901234' CREATE (a)-[r:View]->(b) RETURN type(r);
-// MATCH (a:User), (b:Post) WHERE a.vanity = 'realhinome' AND b.id = '12345678901234' CREATE (a)-[r:Like]->(b) RETURN type(r); - User a likes b post
-// MATCH (n:User) -[:Create]->(p:Post) WHERE n.vanity = 'realhinome' RETURN p; - get post
-// MATCH (a:User), (b:User) WHERE a.vanity = 'realhinome' AND b.vanity = 'abc' CREATE (a)-[r:Block]->(b) RETURN type(r); - user a block b user
-
-// CreateUser allows to create a new user into the graph database
-func CreateUser(vanity string) (string, error) {
-	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+func makeRequest(query string, params map[string]any) (any, error) {
+	data, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"CREATE (:User {vanity: $vanity});",
-			map[string]any{"vanity": vanity})
+			query,
+			params)
 		if err != nil {
 			return nil, err
 		}
@@ -47,6 +30,16 @@ func CreateUser(vanity string) (string, error) {
 
 		return nil, result.Err()
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+// CreateUser allows to create a new user into the graph database
+func CreateUser(id string) (string, error) {
+	_, err := makeRequest("CREATE (:User {id: $id});", map[string]any{"id": id})
 	if err != nil {
 		return "", err
 	}
@@ -54,44 +47,16 @@ func CreateUser(vanity string) (string, error) {
 	return "test", nil
 }
 
-// GetUserStats returns subscriptions and subscribers of the desired user
-func GetUserStats(vanity string) (model.Stats, error) {
-	followers, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (interface{}, error) {
-		result, err := transaction.Run(ctx,
-			"MATCH (:User) -[:Subscribers]->(d:User) WHERE d.vanity = $vanity RETURN d.vanity, count(*) QUERY MEMORY LIMIT 10 KB;",
-			map[string]any{"vanity": vanity})
-		if err != nil {
-			return nil, err
-		}
-
-		if result.Next(ctx) {
-			if result.Record().Values[0] == nil {
-				return nil, errors.New("invalid user")
-			} else {
-				return result.Record().Values[1], nil
-			}
-		}
-
-		return nil, result.Err()
-	})
+// GetUserStats returns subscriptions and Subscriber of the desired user
+func GetUserStats(id string) (model.Stats, error) {
+	followers, err := makeRequest("MATCH (:User) -[:Subscriber]->(d:User) WHERE d.id = $id RETURN d.id, count(*) QUERY MEMORY LIMIT 10 KB;",
+		map[string]any{"id": id})
 	if err != nil {
 		return model.Stats{Followers: -1, Following: -1}, err
 	}
 
-	follwing, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (interface{}, error) {
-		result, err := transaction.Run(ctx,
-			"MATCH (n:User) -[:Subscribers]->(:User) WHERE n.vanity = $vanity RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
-			map[string]any{"vanity": vanity})
-		if err != nil {
-			return nil, err
-		}
-
-		if result.Next(ctx) {
-			return result.Record().Values[0], nil
-		}
-
-		return nil, result.Err()
-	})
+	follwing, err := makeRequest("MATMATCH (n:User) -[:Subscriber]->(:User) WHERE n.id = $id RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
+		map[string]any{"id": id})
 	if err != nil {
 		return model.Stats{Followers: -1, Following: -1}, err
 	}
@@ -104,13 +69,13 @@ func GetUserStats(vanity string) (model.Stats, error) {
 
 // GetUserPost is a function for getting every posts of a user
 // and see their likes
-func GetUserPost(vanity string, skip uint8) ([]model.Post, error) {
+func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 	var list []model.Post
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User) -[:Create]->(p:Post)<-[:Like]-(l:User) WHERE u.vanity = $vanity WITH p, count(l) as numLikes RETURN p.id, p.description, p.text, numLikes ORDER BY p.id SKIP 0 LIMIT 12 QUERY MEMORY LIMIT 5 KB;",
-			map[string]any{"vanity": vanity, "skip": skip * 12})
+			"MATCH (u:User) -[:Create]->(p:Post)<-[:Like]-(l:User) WHERE u.id = $id WITH p, count(l) as numLikes RETURN p.id, p.description, p.text, numLikes ORDER BY p.id SKIP 0 LIMIT 12 QUERY MEMORY LIMIT 5 KB;",
+			map[string]any{"id": id, "skip": skip * 12})
 		if err != nil {
 			return nil, err
 		}
@@ -151,72 +116,46 @@ func GetUserPost(vanity string, skip uint8) ([]model.Post, error) {
 }
 
 // UserSub allows a user to subscriber to another one
-func UserSub(vanity string, to_user string) (bool, error) {
-	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
-		result, err := transaction.Run(ctx, "MATCH (a:User)-[:Subscribers]->(b:User) WHERE a.vanity = $vanity AND b.vanity = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
-			map[string]any{"vanity": vanity, "to": to_user})
-		if err != nil {
-			return nil, err
-		}
-
-		if result.Next(ctx) {
-			if result.Record().Values[0] == nil {
-				return true, nil
-			} else {
-				return false, errors.New("already subscribed")
-			}
-		} else {
-			return true, nil
-		}
-	})
-	if err != nil {
-		return false, err
+func UserRelation(id string, to_user string, relation_type string) (bool, error) {
+	var content string
+	switch relation_type {
+	case "Subscriber", "Block":
+		content = "User"
+	case "Like", "View":
+		content = "Post"
 	}
 
-	_, err = Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
-		result, err := transaction.Run(ctx,
-			"MATCH (a:User), (b:User) WHERE a.vanity = $vanity AND b.vanity = $to CREATE (a)-[r:Subscribers]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
-			map[string]any{"vanity": vanity, "to": to_user})
-		if err != nil {
-			return nil, err
-		}
-
-		if result.Next(ctx) {
-			if result.Record().Values[0] == nil {
-				return nil, errors.New("invalid user")
-			} else {
-				return true, nil
-			}
-		} else {
-			return nil, errors.New("invalid user")
-		}
-	})
+	res, err := makeRequest("MATCH (a:User)-[:"+relation_type+"]->(b:"+content+") WHERE a.id = $id AND b.id = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
+		map[string]any{"id": id, "to": to_user})
 	if err != nil {
 		return false, err
+	} else if res != nil {
+		return false, errors.New("already " + relation_type + "ed")
+	}
+
+	res, err = makeRequest("MATCH (a:User), (b:"+content+") WHERE a.id = $id AND b.id = $to CREATE (a)-[r:"+relation_type+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
+		map[string]any{"id": id, "to": to_user})
+	if err != nil {
+		return false, err
+	} else if res == nil {
+		return false, errors.New("invalid " + content)
 	}
 
 	return true, nil
 }
 
 // UserUnSub allows a user to unsubscriber to another one
-func UserUnSub(vanity string, to_user string) (bool, error) {
-	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
-		result, err := transaction.Run(ctx, "MATCH (a:User)-[r:Subscribers]->(b:User) WHERE a.vanity = $vanity AND b.vanity = $to DELETE r QUERY MEMORY LIMIT 1 KB;",
-			map[string]any{"vanity": vanity, "to": to_user})
-		if err != nil {
-			return nil, err
-		}
+func UserUnRelation(id string, to_user string, relation_type string) (bool, error) {
+	var content string
+	switch relation_type {
+	case "Subscriber", "Block":
+		content = "User"
+	case "Like", "View":
+		content = "Post"
+	}
 
-		if result.Next(ctx) {
-			if result.Record().Values[0] == nil {
-				return true, nil
-			} else {
-				return false, errors.New("already subscribed")
-			}
-		} else {
-			return true, nil
-		}
-	})
+	_, err := makeRequest("MATCH (a:User)-[r:"+relation_type+"]->(b:"+content+") WHERE a.id = $id AND b.id = $to DELETE r QUERY MEMORY LIMIT 1 KB;",
+		map[string]any{"id": id, "to": to_user})
 	if err != nil {
 		return false, err
 	}
