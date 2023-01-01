@@ -116,25 +116,25 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 }
 
 // UserSub allows a user to subscriber to another one
-func UserRelation(id string, to_user string, relation_type string) (bool, error) {
+func UserRelation(id string, toUser string, relationType string) (bool, error) {
 	var content string
-	switch relation_type {
+	switch relationType {
 	case "Subscriber", "Block":
 		content = "User"
 	case "Like", "View":
 		content = "Post"
 	}
 
-	res, err := makeRequest("MATCH (a:User)-[:"+relation_type+"]->(b:"+content+") WHERE a.id = $id AND b.id = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
-		map[string]any{"id": id, "to": to_user})
+	res, err := makeRequest("MATCH (a:User)-[:"+relationType+"]->(b:"+content+") WHERE a.id = $id AND b.id = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
+		map[string]any{"id": id, "to": toUser})
 	if err != nil {
 		return false, err
 	} else if res != nil {
-		return false, errors.New("already " + relation_type + "ed")
+		return false, errors.New("already " + relationType + "ed")
 	}
 
-	res, err = makeRequest("MATCH (a:User), (b:"+content+") WHERE a.id = $id AND b.id = $to CREATE (a)-[r:"+relation_type+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
-		map[string]any{"id": id, "to": to_user})
+	res, err = makeRequest("MATCH (a:User), (b:"+content+") WHERE a.id = $id AND b.id = $to CREATE (a)-[r:"+relationType+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
+		map[string]any{"id": id, "to": toUser})
 	if err != nil {
 		return false, err
 	} else if res == nil {
@@ -145,17 +145,17 @@ func UserRelation(id string, to_user string, relation_type string) (bool, error)
 }
 
 // UserUnSub allows a user to unsubscriber to another one
-func UserUnRelation(id string, to_user string, relation_type string) (bool, error) {
+func UserUnRelation(id string, toUser string, relationType string) (bool, error) {
 	var content string
-	switch relation_type {
+	switch relationType {
 	case "Subscriber", "Block":
 		content = "User"
 	case "Like", "View":
 		content = "Post"
 	}
 
-	_, err := makeRequest("MATCH (a:User)-[r:"+relation_type+"]->(b:"+content+") WHERE a.id = $id AND b.id = $to DELETE r QUERY MEMORY LIMIT 1 KB;",
-		map[string]any{"id": id, "to": to_user})
+	_, err := makeRequest("MATCH (a:User)-[r:"+relationType+"]->(b:"+content+") WHERE a.id = $id AND b.id = $to DELETE r QUERY MEMORY LIMIT 1 KB;",
+		map[string]any{"id": id, "to": toUser})
 	if err != nil {
 		return false, err
 	}
