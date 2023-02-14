@@ -76,7 +76,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 				RedirectUri  string `json:"redirect_uri"`
 			}{
 				ClientId:     "suba",
-				ClientSecret: os.Getenv("secret"),
+				ClientSecret: os.Getenv("SECRET"),
 				Code:         req.URL.Query().Get("code"),
 				RedirectUri:  os.Getenv("REDIRECT_URL"),
 			})
