@@ -22,6 +22,7 @@ func main() {
 	http.HandleFunc("/v1/new", router.New)
 	http.HandleFunc("/users/", router.Users)
 	http.HandleFunc("/relation/", router.Relation)
+	http.HandleFunc("/posts/", router.GetPost)
 
 	// Init every helpers function
 	helpers.Init()
