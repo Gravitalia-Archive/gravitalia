@@ -9,7 +9,7 @@ import (
 	"github.com/Gravitalia/gravitalia/model"
 )
 
-func GetPost(w http.ResponseWriter, req *http.Request) {
+func Post(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
