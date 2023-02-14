@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/Gravitalia/gravitalia/model"
@@ -161,4 +162,19 @@ func UserUnRelation(id string, toUser string, relationType string) (bool, error)
 	}
 
 	return true, nil
+}
+
+// GetPost allows to get data of a post
+func GetPost(id string) (model.Post, error) {
+	var post model.Post
+
+	res, err := makeRequest("MATCH (p:Post) WHERE p.id = $id RETURN type(p) QUERY MEMORY LIMIT 1 KB;",
+		map[string]any{"id": id})
+	if err != nil {
+		return model.Post{}, err
+	}
+
+	fmt.Println(res)
+
+	return post, nil
 }
