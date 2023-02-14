@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/Gravitalia/gravitalia/model"
@@ -50,13 +49,13 @@ func CreateUser(id string) (string, error) {
 
 // GetUserStats returns subscriptions and Subscriber of the desired user
 func GetUserStats(id string) (model.Stats, error) {
-	followers, err := makeRequest("MATCH (:User) -[:Subscriber]->(d:User) WHERE d.id = $id RETURN d.id, count(*) QUERY MEMORY LIMIT 10 KB;",
+	followers, err := makeRequest("MATCH (:User) -[:Subscriber]->(d:User) WHERE d.id = $id RETURN count(*), d.id QUERY MEMORY LIMIT 10 KB;",
 		map[string]any{"id": id})
 	if err != nil {
 		return model.Stats{Followers: -1, Following: -1}, err
 	}
 
-	follwing, err := makeRequest("MATMATCH (n:User) -[:Subscriber]->(:User) WHERE n.id = $id RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
+	follwing, err := makeRequest("MATCH (n:User) -[:Subscriber]->(:User) WHERE n.id = $id RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
 		map[string]any{"id": id})
 	if err != nil {
 		return model.Stats{Followers: -1, Following: -1}, err
@@ -82,6 +81,10 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 		}
 
 		if result.Next(ctx) {
+			if result.Record().Values[0] == nil {
+				return nil, errors.New("invalid user")
+			}
+
 			incr := 0
 			pos := 0
 			for i := 0; i < len(result.Record().Values); i++ {
@@ -168,13 +171,43 @@ func UserUnRelation(id string, toUser string, relationType string) (bool, error)
 func GetPost(id string) (model.Post, error) {
 	var post model.Post
 
-	res, err := makeRequest("MATCH (p:Post) WHERE p.id = $id RETURN type(p) QUERY MEMORY LIMIT 1 KB;",
-		map[string]any{"id": id})
+	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+		result, err := transaction.Run(ctx,
+			"MATCH (:User) -[:Create]->(p:Post)<-[:Like]-(l:User) WHERE p.id = $id WITH p, count(l) as numLikes RETURN p.id, p.description, p.text, numLikes QUERY MEMORY LIMIT 5 KB;",
+			map[string]any{"id": id})
+		if err != nil {
+			return nil, err
+		}
+
+		if result.Next(ctx) {
+			if result.Record().Values[0] == nil {
+				return nil, errors.New("invalid post")
+			}
+
+			pos := 0
+			for i := 0; i < len(result.Record().Values); i++ {
+				if pos == 0 {
+					post.Id = result.Record().Values[i].(string)
+				}
+				if pos == 1 {
+					post.Description = result.Record().Values[i].(string)
+				}
+				if pos == 2 {
+					post.Text = result.Record().Values[i].(string)
+				}
+				if pos == 3 {
+					post.Like = result.Record().Values[i].(int64)
+				}
+				pos++
+			}
+			return post, nil
+		}
+
+		return nil, result.Err()
+	})
 	if err != nil {
 		return model.Post{}, err
 	}
-
-	fmt.Println(res)
 
 	return post, nil
 }
