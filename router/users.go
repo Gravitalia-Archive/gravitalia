@@ -58,3 +58,20 @@ func Users(w http.ResponseWriter, req *http.Request) {
 		Posts:     posts,
 	})
 }
+
+func Delete(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	jsonEncoder := json.NewEncoder(w)
+
+	vanity, err := helpers.CheckToken(req.Header.Get("authorization"))
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: "Invalid token",
+		})
+		return
+	}
+
+	jsonEncoder.Encode()
+}
