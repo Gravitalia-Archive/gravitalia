@@ -190,7 +190,8 @@ func GetPost(id string) (model.Post, error) {
 	return post, nil
 }
 
-func Deleteuser(vanity string) (bool, error) {
+// DeleteUser allows to remove every relations, posts, comments and user
+func DeleteUser(vanity string) (bool, error) {
 	_, err := makeRequest("MATCH (u:User {id: 'realhinome'})-[:Create]->(p:Post) DETACH DELETE p WITH u MATCH (u)-[:Commented]->(c:Comment) DETACH DELETE c WITH u MATCH (u)-[r]->() DELETE r WITH u DETACH DELETE u;",
 		map[string]any{"id": vanity})
 	if err != nil {
