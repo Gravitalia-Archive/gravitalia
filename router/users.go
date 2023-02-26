@@ -3,6 +3,7 @@ package router
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/Gravitalia/gravitalia/database"
@@ -56,5 +57,49 @@ func Users(w http.ResponseWriter, req *http.Request) {
 		Followers: stats.Followers,
 		Following: stats.Following,
 		Posts:     posts,
+	})
+}
+
+func Delete(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	jsonEncoder := json.NewEncoder(w)
+
+	vanity := ""
+	var err error
+
+	if req.Header.Get("authorization") == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: "Invalid token",
+		})
+		return
+	} else if req.Header.Get("authorization") == os.Getenv("GLOBAL_AUTH") {
+		vanity = req.URL.Query().Get("user")
+	} else {
+		vanity, err = helpers.CheckToken(req.Header.Get("authorization"))
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: "Invalid token",
+			})
+			return
+		}
+	}
+
+	_, err = database.DeleteUser(vanity)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: "Internal server error",
+		})
+		return
+	}
+
+	jsonEncoder.Encode(model.RequestError{
+		Error:   false,
+		Message: "OK",
 	})
 }
