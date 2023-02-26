@@ -49,13 +49,13 @@ func CreateUser(id string) (string, error) {
 
 // GetUserStats returns subscriptions and Subscriber of the desired user
 func GetUserStats(id string) (model.Stats, error) {
-	followers, err := makeRequest("MATCH (:User) -[:Subscriber]->(d:User) WHERE d.id = $id RETURN d.id, count(*) QUERY MEMORY LIMIT 10 KB;",
+	followers, err := makeRequest("MATCH (:User) -[:Subscriber]->(d:User) WHERE d.id = $id RETURN count(*), d.id QUERY MEMORY LIMIT 10 KB;",
 		map[string]any{"id": id})
 	if err != nil {
 		return model.Stats{Followers: -1, Following: -1}, err
 	}
 
-	follwing, err := makeRequest("MATMATCH (n:User) -[:Subscriber]->(:User) WHERE n.id = $id RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
+	follwing, err := makeRequest("MATCH (n:User) -[:Subscriber]->(:User) WHERE n.id = $id RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
 		map[string]any{"id": id})
 	if err != nil {
 		return model.Stats{Followers: -1, Following: -1}, err
@@ -74,39 +74,30 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User) -[:Create]->(p:Post)<-[:Like]-(l:User) WHERE u.id = $id WITH p, count(l) as numLikes RETURN p.id, p.description, p.text, numLikes ORDER BY p.id SKIP 0 LIMIT 12 QUERY MEMORY LIMIT 5 KB;",
+			"MATCH (u:User {id: $id})-[:Create]->(p:Post) OPTIONAL MATCH (p)<-[:Like]-(liker:User) RETURN p.id as id, p.description as description, p.text as text, count(liker) AS likes ORDER BY id SKIP 0 LIMIT 12;",
 			map[string]any{"id": id, "skip": skip * 12})
 		if err != nil {
 			return nil, err
 		}
 
-		if result.Next(ctx) {
-			incr := 0
-			pos := 0
-			for i := 0; i < len(result.Record().Values); i++ {
-				if i%4 == 0 && i != 0 {
-					incr++
-					pos = 0
-				}
-				if pos == 0 {
-					list = append(list, model.Post{})
-					list[incr].Id = result.Record().Values[i].(string)
-				}
-				if pos == 1 {
-					list[incr].Description = result.Record().Values[i].(string)
-				}
-				if pos == 2 {
-					list[incr].Text = result.Record().Values[i].(string)
-				}
-				if pos == 3 {
-					list[incr].Like = result.Record().Values[i].(int64)
-				}
-				pos++
+		pos := 0
+		for result.Next(ctx) {
+			if result.Record().Values[0] == nil {
+				return nil, errors.New("invalid user")
 			}
-			return list, nil
+
+			record := result.Record()
+			list = append(list, model.Post{})
+
+			list[pos].Id = record.Values[0].(string)
+			list[pos].Description = record.Values[1].(string)
+			list[pos].Text = record.Values[2].(string)
+			list[pos].Like = record.Values[3].(int64)
+
+			pos++
 		}
 
-		return nil, result.Err()
+		return list, nil
 	})
 	if err != nil {
 		return list, err
@@ -161,4 +152,40 @@ func UserUnRelation(id string, toUser string, relationType string) (bool, error)
 	}
 
 	return true, nil
+}
+
+// GetPost allows to get data of a post
+func GetPost(id string) (model.Post, error) {
+	var post model.Post
+
+	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+		result, err := transaction.Run(ctx,
+			"MATCH (:User)-[:Create]->(p:Post {id: $id}) MATCH (:User)-[:Like]->(p) WITH p, count(*) as numLikes OPTIONAL MATCH (p)<-[r:Comment]-(c:Comment) WITH p, numLikes, collect({id: c.id, text: c.text, user: c.user})[..20] as comments RETURN p.id, p.description, p.text, numLikes, comments ORDER BY p.id DESC;",
+			map[string]any{"id": id})
+		if err != nil {
+			return nil, err
+		}
+
+		if result.Next(ctx) {
+			if result.Record().Values[0] == nil {
+				return nil, errors.New("invalid post")
+			}
+			record := result.Record()
+
+			post.Id = record.Values[0].(string)
+			post.Description = record.Values[1].(string)
+			post.Text = record.Values[2].(string)
+			post.Like = record.Values[3].(int64)
+			post.Comments = record.Values[4].([]any)
+
+			return post, nil
+		}
+
+		return nil, result.Err()
+	})
+	if err != nil {
+		return model.Post{}, err
+	}
+
+	return post, nil
 }
