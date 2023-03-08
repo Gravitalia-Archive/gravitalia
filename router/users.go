@@ -60,6 +60,7 @@ func Users(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
+// Delete allows users to delete their account
 func Delete(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
@@ -97,6 +98,8 @@ func Delete(w http.ResponseWriter, req *http.Request) {
 		})
 		return
 	}
+
+	database.Set(vanity+"-gd", "ok", 3600)
 
 	jsonEncoder.Encode(model.RequestError{
 		Error:   false,
