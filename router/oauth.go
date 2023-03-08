@@ -131,6 +131,17 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
+			// Check if account has been deleted 1 hour ago
+			val, err = database.Mem.Get(user.Vanity + "-gd")
+			if err != nil || string(val.Value) == "ok" {
+				w.WriteHeader(http.StatusBadRequest)
+				jsonEncoder.Encode(model.RequestError{
+					Error:   true,
+					Message: "Account deleted too soon",
+				})
+				return
+			}
+
 			database.CreateUser(user.Vanity)
 
 			w.WriteHeader(http.StatusOK)
@@ -141,7 +152,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		state := randomString(24)
-		database.Set(state, "ok")
+		database.Set(state, "ok", 500)
 		http.Redirect(w, req, os.Getenv("OAUTH_HOST")+"/oauth2/authorize?response_type=code&client_id=suba&scope=user&state="+state, http.StatusTemporaryRedirect)
 	}
 }
