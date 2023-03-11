@@ -39,7 +39,7 @@ func makeRequest(query string, params map[string]any) (any, error) {
 
 // CreateUser allows to create a new user into the graph database
 func CreateUser(id string) (string, error) {
-	_, err := makeRequest("CREATE (:User {id: $id});", map[string]any{"id": id})
+	_, err := makeRequest("CREATE (:User {name: $id, public: true, suspended: false});", map[string]any{"id": id})
 	if err != nil {
 		return "", err
 	}
@@ -49,13 +49,13 @@ func CreateUser(id string) (string, error) {
 
 // GetUserStats returns subscriptions and Subscriber of the desired user
 func GetUserStats(id string) (model.Stats, error) {
-	followers, err := makeRequest("MATCH (:User) -[:Subscriber]->(d:User) WHERE d.id = $id RETURN count(*), d.id QUERY MEMORY LIMIT 10 KB;",
+	followers, err := makeRequest("MATCH (:User) -[:Subscriber]->(d:User) WHERE d.name = $id RETURN count(*), d.name QUERY MEMORY LIMIT 10 KB;",
 		map[string]any{"id": id})
 	if err != nil {
 		return model.Stats{Followers: -1, Following: -1}, err
 	}
 
-	follwing, err := makeRequest("MATCH (n:User) -[:Subscriber]->(:User) WHERE n.id = $id RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
+	follwing, err := makeRequest("MATCH (n:User) -[:Subscriber]->(:User) WHERE n.name = $id RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
 		map[string]any{"id": id})
 	if err != nil {
 		return model.Stats{Followers: -1, Following: -1}, err
@@ -74,7 +74,7 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User {id: $id})-[:Create]->(p:Post) OPTIONAL MATCH (p)<-[:Like]-(liker:User) RETURN p.id as id, p.description as description, p.text as text, count(liker) AS likes ORDER BY id SKIP 0 LIMIT 12;",
+			"MATCH (u:User {name: $id})-[:Create]->(p:Post) OPTIONAL MATCH (p)<-[:Like]-(liker:User) RETURN p.id as id, p.description as description, p.text as text, count(liker) AS likes ORDER BY id SKIP 0 LIMIT 12;",
 			map[string]any{"id": id, "skip": skip * 12})
 		if err != nil {
 			return nil, err
@@ -116,7 +116,14 @@ func UserRelation(id string, toUser string, relationType string) (bool, error) {
 		content = "Post"
 	}
 
-	res, err := makeRequest("MATCH (a:User)-[:"+relationType+"]->(b:"+content+") WHERE a.id = $id AND b.id = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
+	var identifier string
+	if content == "User" {
+		identifier = "name"
+	} else {
+		identifier = "id"
+	}
+
+	res, err := makeRequest("MATCH (a:User)-[:"+relationType+"]->(b:"+content+") WHERE a.name = $id AND b."+identifier+" = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
 		map[string]any{"id": id, "to": toUser})
 	if err != nil {
 		return false, err
@@ -124,7 +131,7 @@ func UserRelation(id string, toUser string, relationType string) (bool, error) {
 		return false, errors.New("already " + relationType + "ed")
 	}
 
-	res, err = makeRequest("MATCH (a:User), (b:"+content+") WHERE a.id = $id AND b.id = $to CREATE (a)-[r:"+relationType+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
+	res, err = makeRequest("MATCH (a:User), (b:"+content+") WHERE a.name = $id AND b."+identifier+" = $to CREATE (a)-[r:"+relationType+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
 		map[string]any{"id": id, "to": toUser})
 	if err != nil {
 		return false, err
@@ -145,7 +152,14 @@ func UserUnRelation(id string, toUser string, relationType string) (bool, error)
 		content = "Post"
 	}
 
-	_, err := makeRequest("MATCH (a:User)-[r:"+relationType+"]->(b:"+content+") WHERE a.id = $id AND b.id = $to DELETE r QUERY MEMORY LIMIT 1 KB;",
+	var identifier string
+	if content == "User" {
+		identifier = "name"
+	} else {
+		identifier = "id"
+	}
+
+	_, err := makeRequest("MATCH (a:User)-[r:"+relationType+"]->(b:"+content+") WHERE a.name = $id AND b."+identifier+" = $to DELETE r QUERY MEMORY LIMIT 1 KB;",
 		map[string]any{"id": id, "to": toUser})
 	if err != nil {
 		return false, err
@@ -192,7 +206,7 @@ func GetPost(id string) (model.Post, error) {
 
 // DeleteUser allows to remove every relations, posts, comments and user
 func DeleteUser(vanity string) (bool, error) {
-	_, err := makeRequest("MATCH (u:User {id: 'realhinome'})-[:Create]->(p:Post) DETACH DELETE p WITH u MATCH (u)-[:Commented]->(c:Comment) DETACH DELETE c WITH u MATCH (u)-[r]->() DELETE r WITH u DETACH DELETE u;",
+	_, err := makeRequest("MATCH (u:User {name: $id})-[:Create]->(p:Post) DETACH DELETE p WITH u MATCH (u)-[:Commented]->(c:Comment) DETACH DELETE c WITH u MATCH (u)-[r]->() DELETE r WITH u DETACH DELETE u;",
 		map[string]any{"id": vanity})
 	if err != nil {
 		return false, err
