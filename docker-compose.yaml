@@ -1,21 +1,63 @@
-version: "3"
+version: '3.9'
 
 services:
-  graph:
-    image: memgraph
+  gravitalia:
+    image: gravitalia/gravitalia:latest
+    container_name: gravitalia
+    restart: always
+    networks:
+      - gwork
+    ports:
+      - '8888:8888'
+    depends_on:
+      - memgraph
+      - memcached
+    env_file:
+      - .env
+
+  memgraph:
+    image: "memgraph/memgraph-platform"
     ports:
       - "7687:7687"
+      - "3000:3000"
       - "7444:7444"
-      
-  mem:
-    image: memcached
+    restart: always
+    container_name: memgraph
+    environment:
+      - MEMGRAPH="--log-level=TRACE"
+    networks:
+      - gwork
+    volumes:
+      - mg_lib:/var/lib/memgraph
+      - mg_log:/var/log/memgraph
+      - mg_etc:/etc/memgraph
+
+  memcached:
+    image: memcached:latest
+    restart: always
+    container_name: memcached
+    networks:
+      - gwork
+      - gravitalia
+    deploy:
+      resources:
+        limits:
+          memory: 1g
     ports:
       - "11211:11211"
-     
-  rest:
-    build: .
-    ports:
-      - "8888:8888"
-    depends_on:
-      - graph
-      - mem
+    healthcheck:
+      test: ["CMD", "true"]
+      start_period: 40s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  mg_lib:
+  mg_log:
+  mg_etc:
+
+networks:
+  gwork:
+  gravitalia:
+    external: true
