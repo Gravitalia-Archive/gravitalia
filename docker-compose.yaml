@@ -8,43 +8,32 @@ services:
     networks:
       - gwork
     ports:
-      - '8888:8888'
+      - '127.0.0.1:8888:8888'
     depends_on:
-      - memgraph
-      - memcached
+      "memgraph-mage":
+        condition: service_healthy
     env_file:
       - .env
 
-  memgraph:
-    image: "memgraph/memgraph-platform"
-    ports:
-      - "7687:7687"
-      - "3000:3000"
-      - "7444:7444"
-    restart: always
-    container_name: memgraph
-    environment:
-      - MEMGRAPH="--log-level=TRACE"
-    networks:
-      - gwork
+  memgraph-mage:
+    image: "memgraph/memgraph-mage"
+    #restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 3g
+        reservations:
+          memory: 2g
     volumes:
       - mg_lib:/var/lib/memgraph
       - mg_log:/var/log/memgraph
       - mg_etc:/etc/memgraph
-
-  memcached:
-    image: memcached:latest
-    restart: always
-    container_name: memcached
-    networks:
-      - gwork
-      - gravitalia
-    deploy:
-      resources:
-        limits:
-          memory: 1g
-    ports:
-      - "11211:11211"
+    expose:
+      - "7687"
+      - "7444"
+    entrypoint: ["/usr/lib/memgraph/memgraph", "--log-level=TRACE", "--memory-limit=2000"]
+    environment:
+      - MEMGRAPH="--log-level=TRACE --memory-limit=2000"
     healthcheck:
       test: ["CMD", "true"]
       start_period: 40s
@@ -59,5 +48,6 @@ volumes:
 
 networks:
   gwork:
+    driver: bridge
   gravitalia:
     external: true
