@@ -29,8 +29,8 @@ func Users(w http.ResponseWriter, req *http.Request) {
 		username = vanity
 	}
 
-	stats, err := database.GetUserStats(username)
-	if err != nil {
+	stats, err := database.GetProfile(username)
+	if err != nil || stats.Suspended {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
@@ -39,24 +39,60 @@ func Users(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	posts, err := database.GetUserPost(username, 0)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: "Invalid user",
-		})
-		return
+	var allow_post_access bool
+	if stats.Public {
+		allow_post_access = true
+	} else if !stats.Public && strings.TrimPrefix(req.URL.Path, "/users/") != "@me" && req.Header.Get("authorization") != "" {
+		vanity, err := helpers.CheckToken(req.Header.Get("authorization"))
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: "Invalid token",
+			})
+			return
+		}
+
+		is, err := database.IsUserSubscrirerTo(vanity, username)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: "Invalid relation",
+			})
+			return
+		}
+
+		allow_post_access = is
+	}
+
+	posts := make([]model.Post, 0)
+	if allow_post_access {
+		posts, err = database.GetUserPost(username, 0)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: "Invalid user",
+			})
+			return
+		}
 	}
 
 	jsonEncoder.Encode(struct {
-		Followers int64        `json:"followers"`
-		Following int64        `json:"following"`
-		Posts     []model.Post `json:"posts"`
+		Followers     int64        `json:"followers"`
+		Following     int64        `json:"following"`
+		Public        bool         `json:"public"`
+		Suspended     bool         `json:"suspended"`
+		CanAccessPost bool         `json:"access_post"`
+		Posts         []model.Post `json:"posts"`
 	}{
-		Followers: stats.Followers,
-		Following: stats.Following,
-		Posts:     posts,
+		Followers:     stats.Followers,
+		Following:     stats.Following,
+		Public:        stats.Public,
+		Suspended:     stats.Suspended,
+		CanAccessPost: allow_post_access,
+		Posts:         posts,
 	})
 }
 

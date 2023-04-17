@@ -15,6 +15,7 @@ var (
 	Session   = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 )
 
+// makeRequest is a simple way to send a query
 func makeRequest(query string, params map[string]any) (any, error) {
 	data, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
@@ -47,30 +48,42 @@ func CreateUser(id string) (string, error) {
 	return "test", nil
 }
 
-// GetUserStats returns subscriptions and Subscriber of the desired user
-func GetUserStats(id string) (model.Stats, error) {
-	followers, err := makeRequest("MATCH (:User) -[:Subscriber]->(d:User) WHERE d.name = $id RETURN count(*), d.name QUERY MEMORY LIMIT 10 KB;",
-		map[string]any{"id": id})
+// GetProfile returns followers, following and other account data of the desired user
+func GetProfile(id string) (model.Profile, error) {
+	var profile model.Profile
+
+	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+		result, err := transaction.Run(ctx,
+			"MATCH (n:User {name: $id}) OPTIONAL MATCH (n)-[:Subscriber]->(d:User) WITH n, count(d) as following OPTIONAL MATCH (u:User)-[:Subscriber]->(n) WITH n, following, count(u) as followers RETURN followers, following, n.public, n.suspended;",
+			map[string]any{"id": id})
+		if err != nil {
+			return nil, err
+		}
+
+		for result.Next(ctx) {
+			if result.Record().Values[2] == nil {
+				return nil, errors.New("invalid user")
+			}
+
+			profile.Followers = result.Record().Values[0].(int64)
+			profile.Following = result.Record().Values[1].(int64)
+			profile.Public = result.Record().Values[2].(bool)
+			profile.Suspended = result.Record().Values[3].(bool)
+		}
+
+		return profile, nil
+	})
 	if err != nil {
-		return model.Stats{Followers: -1, Following: -1}, err
+		return model.Profile{Followers: -1, Following: -1}, err
 	}
 
-	follwing, err := makeRequest("MATCH (n:User) -[:Subscriber]->(:User) WHERE n.name = $id RETURN count(*) QUERY MEMORY LIMIT 10 KB;",
-		map[string]any{"id": id})
-	if err != nil {
-		return model.Stats{Followers: -1, Following: -1}, err
-	}
-
-	return model.Stats{
-		Followers: followers.(int64),
-		Following: follwing.(int64),
-	}, nil
+	return profile, nil
 }
 
 // GetUserPost is a function for getting every posts of a user
 // and see their likes
 func GetUserPost(id string, skip uint8) ([]model.Post, error) {
-	var list []model.Post
+	list := make([]model.Post, 0)
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
@@ -83,7 +96,7 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 		pos := 0
 		for result.Next(ctx) {
 			if result.Record().Values[0] == nil {
-				return nil, errors.New("invalid user")
+				return list, nil
 			}
 
 			record := result.Record()
@@ -106,8 +119,8 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 	return list, nil
 }
 
-// UserSub allows a user to subscriber to another one
-func UserRelation(id string, toUser string, relationType string) (bool, error) {
+// UserRelation create a new relation (edge) between two nodes
+func UserRelation(id string, to string, relationType string) (bool, error) {
 	var content string
 	switch relationType {
 	case "Subscriber", "Block":
@@ -124,7 +137,7 @@ func UserRelation(id string, toUser string, relationType string) (bool, error) {
 	}
 
 	res, err := makeRequest("MATCH (a:User)-[:"+relationType+"]->(b:"+content+") WHERE a.name = $id AND b."+identifier+" = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
-		map[string]any{"id": id, "to": toUser})
+		map[string]any{"id": id, "to": to})
 	if err != nil {
 		return false, err
 	} else if res != nil {
@@ -132,7 +145,7 @@ func UserRelation(id string, toUser string, relationType string) (bool, error) {
 	}
 
 	res, err = makeRequest("MATCH (a:User), (b:"+content+") WHERE a.name = $id AND b."+identifier+" = $to CREATE (a)-[r:"+relationType+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
-		map[string]any{"id": id, "to": toUser})
+		map[string]any{"id": id, "to": to})
 	if err != nil {
 		return false, err
 	} else if res == nil {
@@ -142,8 +155,8 @@ func UserRelation(id string, toUser string, relationType string) (bool, error) {
 	return true, nil
 }
 
-// UserUnSub allows a user to unsubscriber to another one
-func UserUnRelation(id string, toUser string, relationType string) (bool, error) {
+// UserUnRelation delete a relation (edge) between two nodes
+func UserUnRelation(id string, to string, relationType string) (bool, error) {
 	var content string
 	switch relationType {
 	case "Subscriber", "Block":
@@ -160,7 +173,7 @@ func UserUnRelation(id string, toUser string, relationType string) (bool, error)
 	}
 
 	_, err := makeRequest("MATCH (a:User)-[r:"+relationType+"]->(b:"+content+") WHERE a.name = $id AND b."+identifier+" = $to DELETE r QUERY MEMORY LIMIT 1 KB;",
-		map[string]any{"id": id, "to": toUser})
+		map[string]any{"id": id, "to": to})
 	if err != nil {
 		return false, err
 	}
@@ -213,4 +226,21 @@ func DeleteUser(vanity string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// IsUserSubscrirerTo check if a user (id) is subscrired to another one (user)
+// and respond with true if a relation (edge) exists
+// or with false if no relation exists
+func IsUserSubscrirerTo(id string, user string) (bool, error) {
+	res, err := makeRequest("MATCH (a:User)-[:Subscriber]->(b:User) WHERE a.name = $id AND b.name = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
+		map[string]any{"id": id, "to": user})
+	if err != nil {
+		return false, err
+	}
+
+	if res != nil {
+		return true, nil
+	} else {
+		return false, nil
+	}
 }
