@@ -1,8 +1,10 @@
 package model
 
-type Stats struct {
+type Profile struct {
 	Followers int64 `json:"followers"`
 	Following int64 `json:"following"`
+	Public    bool  `json:"public"`
+	Suspended bool  `json:"suspended"`
 }
 
 type Post struct {
