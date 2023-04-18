@@ -15,4 +15,5 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
+      working-directory: ./rest
       run: docker build . --file Dockerfile --tag gravitalia:$(date +%s)
