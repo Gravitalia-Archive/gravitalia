@@ -1,0 +1,53 @@
+version: '3.9'
+
+services:
+  gravitalia:
+    image: gravitalia/gravitalia:latest
+    container_name: gravitalia
+    restart: always
+    networks:
+      - gwork
+    ports:
+      - '127.0.0.1:8888:8888'
+    depends_on:
+      "memgraph-mage":
+        condition: service_healthy
+    env_file:
+      - .env
+
+  memgraph-mage:
+    image: "memgraph/memgraph-mage"
+    #restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 3g
+        reservations:
+          memory: 2g
+    volumes:
+      - mg_lib:/var/lib/memgraph
+      - mg_log:/var/log/memgraph
+      - mg_etc:/etc/memgraph
+    expose:
+      - "7687"
+      - "7444"
+    entrypoint: ["/usr/lib/memgraph/memgraph", "--log-level=TRACE", "--memory-limit=2000"]
+    environment:
+      - MEMGRAPH="--log-level=TRACE --memory-limit=2000"
+    healthcheck:
+      test: ["CMD", "true"]
+      start_period: 40s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  mg_lib:
+  mg_log:
+  mg_etc:
+
+networks:
+  gwork:
+    driver: bridge
+  gravitalia:
+    external: true
