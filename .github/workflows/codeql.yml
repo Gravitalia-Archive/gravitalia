@@ -14,8 +14,6 @@ name: "CodeQL"
 on:
   push:
     branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
 
 jobs:
   analyze:
@@ -39,10 +37,8 @@ jobs:
       uses: github/codeql-action/init@v2
       with:
         languages: ${{ matrix.language }}
-        path: ./rest
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
       with:
         category: "/language:${{matrix.language}}"
-        path: ./rest
