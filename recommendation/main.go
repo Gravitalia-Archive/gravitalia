@@ -7,13 +7,30 @@ import (
 
 	"log"
 
+	"github.com/Gravitalia/recommendation/database"
 	"github.com/Gravitalia/recommendation/router"
 	"github.com/joho/godotenv"
+	"github.com/robfig/cron"
 )
 
 func main() {
 	// Get key-value in .env file
 	godotenv.Load()
+
+	// Start a new cron job
+	c := cron.New()
+	c.AddFunc("@weekly", func() {
+		log.Println("Starting PageRank and Community Detection...")
+		_, err := database.PageRank()
+		if err != nil {
+			log.Panicf("PageRank did not work as expected")
+		}
+		_, err = database.CommunityDetection()
+		if err != nil {
+			log.Panicf("Community Detection did not work as expected")
+		}
+	})
+	c.Start()
 
 	// Create routes
 	http.HandleFunc("/", router.Index)
