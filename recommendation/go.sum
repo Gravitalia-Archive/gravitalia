@@ -1,5 +1,5 @@
-github.com/cristalhq/jwt/v4 v4.0.2 h1:g/AD3h0VicDamtlM70GWGElp8kssQEv+5wYd7L9WOhU=
-github.com/cristalhq/jwt/v4 v4.0.2/go.mod h1:HnYraSNKDRag1DZP92rYHyrjyQHnVEHPNqesmzs+miQ=
+github.com/cristalhq/jwt/v5 v5.0.1 h1:gaubS6QV37SLJFjjFSuZ8tX4kCvNj8nOY+RMBqmWf8k=
+github.com/cristalhq/jwt/v5 v5.0.1/go.mod h1:UFyVE3EVmCAvSvsRaBwr4aAzqW+UeZUlhreiv2LNDxM=
 github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
 github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
 github.com/neo4j/neo4j-go-driver/v5 v5.7.0 h1:Z9kcdzPsqJbNb5YS9ZAMhMar2aUD5eqheLBNEG8YYhc=
