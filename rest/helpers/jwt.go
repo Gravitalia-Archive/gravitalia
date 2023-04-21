@@ -3,10 +3,11 @@ package helpers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
-	"github.com/cristalhq/jwt/v4"
+	"github.com/cristalhq/jwt/v5"
 )
 
 // CreateToken allows to create JWT tokens
@@ -17,6 +18,8 @@ func CreateToken(vanity string) (string, error) {
 	} else {
 		key = "secret"
 	}
+
+	fmt.Println(key)
 
 	signer, err := jwt.NewSignerHS(jwt.HS512, []byte(key))
 	if err != nil {
@@ -38,8 +41,6 @@ func CreateToken(vanity string) (string, error) {
 	return token.String(), nil
 }
 
-// CheckToken allows to verify the authenticity of a token
-// and then send the user vanity
 func CheckToken(token string) (string, error) {
 	var key string
 	if os.Getenv("JWT_SECRET") != "" {
