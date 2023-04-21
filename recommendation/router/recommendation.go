@@ -2,7 +2,6 @@ package router
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/Gravitalia/recommendation/database"
@@ -44,7 +43,6 @@ func Get(w http.ResponseWriter, req *http.Request) {
 		})
 		return
 	}
-	fmt.Println("tag liked post: ", tagPost)
 
 	followingPost, err := database.LastFollowingPost(vanity)
 	if err != nil {
@@ -55,7 +53,6 @@ func Get(w http.ResponseWriter, req *http.Request) {
 		})
 		return
 	}
-	fmt.Println("Following post: ", followingPost)
 
 	communityPost, err := database.LastCommunityPost(vanity)
 	if err != nil {
@@ -66,10 +63,21 @@ func Get(w http.ResponseWriter, req *http.Request) {
 		})
 		return
 	}
-	fmt.Println("community post: ", communityPost)
 
-	jsonEncoder.Encode(model.RequestError{
-		Error:   false,
-		Message: vanity,
-	})
+	var posts []model.Post
+	posts = append(posts, tagPost...)
+	posts = append(posts, followingPost...)
+	posts = append(posts, communityPost...)
+
+	posts = helpers.RemoveDuplicates(posts)
+
+	ids := []string{}
+
+	for _, post := range posts {
+		ids = append(ids, post.Id)
+	}
+
+	posts, _ = database.JaccardRank(vanity, ids)
+
+	jsonEncoder.Encode(posts)
 }
