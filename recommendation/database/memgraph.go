@@ -14,6 +14,29 @@ var (
 	Session   = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 )
 
+func loopResults(result neo4j.ResultWithContext) []model.Post {
+	list := make([]model.Post, 0)
+
+	pos := 0
+	for result.Next(ctx) {
+		if result.Record().Values[0] == nil {
+			return list
+		}
+
+		record := result.Record()
+		list = append(list, model.Post{})
+
+		list[pos].Id = record.Values[0].(string)
+		list[pos].Text = record.Values[1].(string)
+		list[pos].Description = record.Values[2].(string)
+		list[pos].Tag = record.Values[3].(string)
+
+		pos++
+	}
+
+	return list
+}
+
 // PageRank starts a new calculation of PageRank
 // in the database
 func PageRank() (bool, error) {
@@ -57,34 +80,19 @@ func CommunityDetection() (bool, error) {
 // LastFollowingPost allows to find the last n publications
 // posted by followings account
 func LastFollowingPost(id string) ([]model.Post, error) {
-	list := make([]model.Post, 0)
+	var list []model.Post
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (n:User {name: 'realhinome'})-[:Subscriber]->(u:User) MATCH (u)-[:Create]->(p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((n)-[:View]->(p)) WITH p, t ORDER BY p.id DESC LIMIT 20 RETURN p.id, p.description, p.text, t.name;",
+			"MATCH (n:User {name: 'realhinome'})-[:Subscriber]->(u:User) MATCH (u)-[:Create]->(p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((n)-[:View]->(p)) WITH p, t ORDER BY p.id DESC LIMIT 20 RETURN p.id, p.text, p.description, t.name;",
 			map[string]any{"id": id})
 		if err != nil {
 			return nil, err
 		}
 
-		pos := 0
-		for result.Next(ctx) {
-			if result.Record().Values[0] == nil {
-				return list, nil
-			}
+		list = loopResults(result)
 
-			record := result.Record()
-			list = append(list, model.Post{})
-
-			list[pos].Id = record.Values[0].(string)
-			list[pos].Description = record.Values[1].(string)
-			list[pos].Text = record.Values[2].(string)
-			list[pos].Tag = record.Values[3].(string)
-
-			pos++
-		}
-
-		return list, nil
+		return true, nil
 	})
 	if err != nil {
 		return list, err
@@ -96,7 +104,7 @@ func LastFollowingPost(id string) ([]model.Post, error) {
 // LastCommunityPost allows to find the last n publications
 // posted by the same community as the user
 func LastCommunityPost(id string) ([]model.Post, error) {
-	list := make([]model.Post, 0)
+	var list []model.Post
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
@@ -106,24 +114,9 @@ func LastCommunityPost(id string) ([]model.Post, error) {
 			return nil, err
 		}
 
-		pos := 0
-		for result.Next(ctx) {
-			if result.Record().Values[0] == nil {
-				return list, nil
-			}
+		list = loopResults(result)
 
-			record := result.Record()
-			list = append(list, model.Post{})
-
-			list[pos].Id = record.Values[0].(string)
-			list[pos].Text = record.Values[1].(string)
-			list[pos].Description = record.Values[2].(string)
-			list[pos].Tag = record.Values[3].(string)
-
-			pos++
-		}
-
-		return list, nil
+		return true, nil
 	})
 	if err != nil {
 		return list, err
@@ -135,7 +128,7 @@ func LastCommunityPost(id string) ([]model.Post, error) {
 // LastLikedPost allows access to the last posts
 // made with the same tag as the last liked post
 func LastLikedPost(id string) ([]model.Post, error) {
-	list := make([]model.Post, 0)
+	var list []model.Post
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
@@ -145,24 +138,9 @@ func LastLikedPost(id string) ([]model.Post, error) {
 			return nil, err
 		}
 
-		pos := 0
-		for result.Next(ctx) {
-			if result.Record().Values[0] == nil {
-				return list, nil
-			}
+		list = loopResults(result)
 
-			record := result.Record()
-			list = append(list, model.Post{})
-
-			list[pos].Id = record.Values[0].(string)
-			list[pos].Text = record.Values[1].(string)
-			list[pos].Description = record.Values[2].(string)
-			list[pos].Tag = record.Values[3].(string)
-
-			pos++
-		}
-
-		return list, nil
+		return true, nil
 	})
 	if err != nil {
 		return list, err
