@@ -14,6 +14,7 @@ var (
 	Session   = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 )
 
+// loopResults allows to assort posts in an array
 func loopResults(result neo4j.ResultWithContext) []model.Post {
 	list := make([]model.Post, 0)
 
@@ -84,7 +85,7 @@ func LastFollowingPost(id string) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (n:User {name: 'realhinome'})-[:Subscriber]->(u:User) MATCH (u)-[:Create]->(p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((n)-[:View]->(p)) WITH p, t ORDER BY p.id DESC LIMIT 20 RETURN p.id, p.text, p.description, t.name;",
+			"MATCH (n:User {name: $id})-[:Subscriber]->(u:User) MATCH (u)-[:Create]->(p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((n)-[:View]->(p)) WITH p, t ORDER BY p.id DESC LIMIT 20 RETURN p.id, p.text, p.description, t.name;",
 			map[string]any{"id": id})
 		if err != nil {
 			return nil, err
@@ -132,13 +133,52 @@ func LastLikedPost(id string) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (:User {name: 'realhinome'})-[:Like]->(p:Post)-[:Show]->(t:Tag) WITH p, t ORDER BY p.id DESC LIMIT 1 WITH t MATCH (p:Post)-[:Show]->(t:Tag) WITH p, t ORDER BY p.id DESC LIMIT 10 RETURN p.id, p.text, p.description, t.name;",
+			"MATCH (:User {name: $id})-[:Like]->(p:Post)-[:Show]->(t:Tag) WITH p, t ORDER BY p.id DESC LIMIT 1 WITH t MATCH (p:Post)-[:Show]->(t:Tag) WITH p, t ORDER BY p.id DESC LIMIT 10 RETURN p.id, p.text, p.description, t.name;",
 			map[string]any{"id": id})
 		if err != nil {
 			return nil, err
 		}
 
 		list = loopResults(result)
+
+		return true, nil
+	})
+	if err != nil {
+		return list, err
+	}
+
+	return list, nil
+}
+
+// JaccardRank ranks every id in idList with the
+// Jaccard similarity algorithm
+func JaccardRank(id string, idList []string) ([]model.Post, error) {
+	var list []model.Post
+
+	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+		result, err := transaction.Run(ctx,
+			"MATCH (u:User {name: $id})-[:Like]->(p:Post) WITH u, p LIMIT 10 MATCH (l:Post {}) WHERE l.id IN $list AND NOT EXISTS((u)-[:View]->(l)) WITH l, p ORDER BY p.id DESC WITH collect(l) as posts, collect(p) as likedPosts CALL node_similarity.jaccard_pairwise(posts, likedPosts) YIELD node1, node2, similarity WITH node1, similarity ORDER BY similarity DESC LIMIT 15 OPTIONAL MATCH (a:User)-[:Like]->(node1) WITH node1, count(DISTINCT a) as numLikes RETURN node1.id, node1.text, node1.description, numLikes;",
+			map[string]any{"id": id, "list": idList})
+		if err != nil {
+			return nil, err
+		}
+
+		pos := 0
+		for result.Next(ctx) {
+			if result.Record().Values[0] == nil {
+				return false, nil
+			}
+
+			record := result.Record()
+			list = append(list, model.Post{})
+
+			list[pos].Id = record.Values[0].(string)
+			list[pos].Text = record.Values[1].(string)
+			list[pos].Description = record.Values[2].(string)
+			list[pos].Like = record.Values[3].(int64)
+
+			pos++
+		}
 
 		return true, nil
 	})
