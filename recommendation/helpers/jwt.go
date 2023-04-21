@@ -9,9 +9,8 @@ import (
 	"github.com/cristalhq/jwt/v5"
 )
 
-// CheckToken allows to verify the authenticity of a token
-// and then send the user vanity
-func CheckToken(token string) (string, error) {
+// Check allow to check the token authenticity
+func Check(token string) (string, error) {
 	var key string
 	if os.Getenv("JWT_SECRET") != "" {
 		key = os.Getenv("JWT_SECRET")
@@ -19,36 +18,35 @@ func CheckToken(token string) (string, error) {
 		key = "secret"
 	}
 
-	verifier, err := jwt.NewVerifierHS(jwt.HS512, []byte(key))
+	hsverifier, err := jwt.NewVerifierHS(jwt.HS512, []byte(key))
 	if err != nil {
 		return "", err
 	}
 
-	tokenBytes := []byte(token)
-	newToken, err := jwt.Parse(tokenBytes, verifier)
+	parsedToken, err := jwt.Parse([]byte(token), hsverifier)
 	if err != nil {
 		return "", err
 	}
 
-	err = verifier.Verify(newToken)
+	err = hsverifier.Verify(parsedToken)
 	if err != nil {
 		return "", err
 	}
 
-	var newClaims jwt.RegisteredClaims
-	err = json.Unmarshal(newToken.Claims(), &newClaims)
+	var claims jwt.RegisteredClaims
+	err = json.Unmarshal(parsedToken.Claims(), &claims)
 	if err != nil {
 		return "", err
 	}
 
-	err = jwt.ParseClaims(tokenBytes, verifier, &newClaims)
+	err = jwt.ParseClaims([]byte(token), hsverifier, &claims)
 	if err != nil {
 		return "", err
 	}
 
-	if !newClaims.IsValidAt(time.Now()) {
+	if !claims.IsValidAt(time.Now()) {
 		return "", errors.New("invalid time")
 	}
 
-	return newClaims.Subject, nil
+	return claims.Subject, nil
 }
