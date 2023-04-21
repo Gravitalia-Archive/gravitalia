@@ -19,7 +19,7 @@ func main() {
 
 	// Start a new cron job
 	c := cron.New()
-	c.AddFunc("@weekly", func() {
+	c.AddFunc("@daily", func() { // switch to @weekly when Gravitalia grows
 		log.Println("Starting PageRank and Community Detection...")
 		_, err := database.PageRank()
 		if err != nil {
@@ -34,6 +34,7 @@ func main() {
 
 	// Create routes
 	http.HandleFunc("/", router.Index)
+	http.HandleFunc("/for_you_feed", router.Get)
 
 	log.Println("Server is starting on port", os.Getenv("RECOMMENDATION_PORT"))
 
