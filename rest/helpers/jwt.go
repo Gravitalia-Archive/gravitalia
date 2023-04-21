@@ -38,6 +38,8 @@ func CreateToken(vanity string) (string, error) {
 	return token.String(), nil
 }
 
+// CheckToken allows to verify the authenticity of a token
+// and then send the user vanity
 func CheckToken(token string) (string, error) {
 	var key string
 	if os.Getenv("JWT_SECRET") != "" {
