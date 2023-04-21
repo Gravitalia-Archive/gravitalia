@@ -6,9 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/cristalhq/jwt/v4"
+	"github.com/cristalhq/jwt/v5"
 )
 
+// CheckToken allows to verify the authenticity of a token
+// and then send the user vanity
 func CheckToken(token string) (string, error) {
 	var key string
 	if os.Getenv("JWT_SECRET") != "" {
@@ -33,7 +35,6 @@ func CheckToken(token string) (string, error) {
 		return "", err
 	}
 
-	// get Registered claims
 	var newClaims jwt.RegisteredClaims
 	err = json.Unmarshal(newToken.Claims(), &newClaims)
 	if err != nil {
