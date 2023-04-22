@@ -87,7 +87,7 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User {name: $id})-[:Create]->(p:Post) OPTIONAL MATCH (p)<-[:Like]-(liker:User) RETURN p.id as id, p.description as description, p.text as text, count(liker) AS likes ORDER BY id SKIP 0 LIMIT 12;",
+			"MATCH (u:User {name: $id})-[:Create]->(p:Post) OPTIONAL MATCH (p)<-[l:Like]-(liker:User) RETURN p.id as id, p.description, p.text, count(DISTINCT l) ORDER BY id SKIP 0 LIMIT 12;",
 			map[string]any{"id": id, "skip": skip * 12})
 		if err != nil {
 			return nil, err
@@ -136,7 +136,7 @@ func UserRelation(id string, to string, relationType string) (bool, error) {
 		identifier = "id"
 	}
 
-	res, err := makeRequest("MATCH (a:User)-[:"+relationType+"]->(b:"+content+") WHERE a.name = $id AND b."+identifier+" = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
+	res, err := makeRequest("MATCH (a:User {name: $id})-[:"+relationType+"]->(b:"+content+"{"+identifier+": $to}) RETURN a;",
 		map[string]any{"id": id, "to": to})
 	if err != nil {
 		return false, err
@@ -144,7 +144,7 @@ func UserRelation(id string, to string, relationType string) (bool, error) {
 		return false, errors.New("already " + relationType + "ed")
 	}
 
-	res, err = makeRequest("MATCH (a:User), (b:"+content+") WHERE a.name = $id AND b."+identifier+" = $to CREATE (a)-[r:"+relationType+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
+	res, err = makeRequest("MATCH (a:User {name: $id}), (b:"+content+" {"+identifier+": $to}) CREATE (a)-[r:"+relationType+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
 		map[string]any{"id": id, "to": to})
 	if err != nil {
 		return false, err
@@ -172,7 +172,7 @@ func UserUnRelation(id string, to string, relationType string) (bool, error) {
 		identifier = "id"
 	}
 
-	_, err := makeRequest("MATCH (a:User)-[r:"+relationType+"]->(b:"+content+") WHERE a.name = $id AND b."+identifier+" = $to DELETE r QUERY MEMORY LIMIT 1 KB;",
+	_, err := makeRequest("MATCH (a:User {name: $id})-[r:"+relationType+"]->(b:"+content+" {"+identifier+": $to}) DELETE r QUERY MEMORY LIMIT 1 KB;",
 		map[string]any{"id": id, "to": to})
 	if err != nil {
 		return false, err
@@ -187,7 +187,7 @@ func GetPost(id string) (model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (:User)-[:Create]->(p:Post {id: $id}) MATCH (:User)-[:Like]->(p) WITH p, count(*) as numLikes OPTIONAL MATCH (p)<-[r:Comment]-(c:Comment) WITH p, numLikes, collect({id: c.id, text: c.text, user: c.user})[..20] as comments RETURN p.id, p.description, p.text, numLikes, comments ORDER BY p.id DESC;",
+			"MATCH (:User)-[:Create]->(p:Post {id: $id}) MATCH (:User)-[l:Like]->(p) WITH p, count(DISTINCT l) as numLikes OPTIONAL MATCH (p)<-[:Comment]-(c:Comment)<-[:Wrote]-(u:User) WITH p, numLikes, collect({text: c.text, timestamp: c.timestamp, user: u.name})[..20] as comments RETURN p.id, p.description, p.text, numLikes, comments;",
 			map[string]any{"id": id})
 		if err != nil {
 			return nil, err
@@ -232,7 +232,7 @@ func DeleteUser(vanity string) (bool, error) {
 // and respond with true if a relation (edge) exists
 // or with false if no relation exists
 func IsUserSubscrirerTo(id string, user string) (bool, error) {
-	res, err := makeRequest("MATCH (a:User)-[:Subscriber]->(b:User) WHERE a.name = $id AND b.name = $to RETURN a QUERY MEMORY LIMIT 1 KB;",
+	res, err := makeRequest("MATCH (a:User)-[:Subscriber]->(b:User) WHERE a.name = $id AND b.name = $to RETURN a;",
 		map[string]any{"id": id, "to": user})
 	if err != nil {
 		return false, err
