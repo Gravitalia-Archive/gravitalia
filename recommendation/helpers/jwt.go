@@ -28,19 +28,16 @@ func Check(token string) (string, error) {
 		return "", err
 	}
 
-	err = hsverifier.Verify(parsedToken)
-	if err != nil {
+	if err = hsverifier.Verify(parsedToken); err != nil {
 		return "", err
 	}
 
 	var claims jwt.RegisteredClaims
-	err = json.Unmarshal(parsedToken.Claims(), &claims)
-	if err != nil {
+	if err = json.Unmarshal(parsedToken.Claims(), &claims); err != nil {
 		return "", err
 	}
 
-	err = jwt.ParseClaims([]byte(token), hsverifier, &claims)
-	if err != nil {
+	if err = jwt.ParseClaims([]byte(token), hsverifier, &claims); err != nil {
 		return "", err
 	}
 
