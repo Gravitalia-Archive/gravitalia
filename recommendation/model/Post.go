@@ -1,5 +1,6 @@
 package model
 
+// Post defines how a post should be sent and generated
 type Post struct {
 	Id          string `json:"id"`
 	Description string `json:"description"`
