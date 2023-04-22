@@ -9,6 +9,8 @@ import (
 	"github.com/Gravitalia/recommendation/model"
 )
 
+// Get handle the route for /for_you_feed and return
+// the posts that the user may like
 func Get(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
