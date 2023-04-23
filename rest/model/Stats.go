@@ -12,5 +12,6 @@ type Post struct {
 	Description string `json:"description"`
 	Text        string `json:"text"`
 	Like        int64  `json:"like"`
+	Author      string `json:"author"`
 	Comments    []any  `json:"comments,omitempty"`
 }
