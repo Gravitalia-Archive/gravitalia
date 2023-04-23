@@ -11,37 +11,41 @@ import (
 	"github.com/Gravitalia/gravitalia/model"
 )
 
+func get_vanity(w http.ResponseWriter, req *http.Request) string {
+	var vanity string
+	if req.Header.Get("authorization") == "" {
+		return ""
+	} else {
+		data, err := helpers.CheckToken(req.Header.Get("authorization"))
+		if err != nil {
+			return ""
+		}
+		vanity = data
+	}
+
+	return vanity
+}
+
 func Handler(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "POST" {
-		add(w, req)
+		add_comment(w, req)
 	} else if req.Method == "DELETE" {
-		delete(w, req)
+		delete_comment(w, req)
 	}
 }
 
-func add(w http.ResponseWriter, req *http.Request) {
+func add_comment(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
-	var vanity string
-	if req.Header.Get("authorization") == "" {
+	vanity := get_vanity(w, req)
+	if vanity == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
 			Message: "Invalid token",
 		})
 		return
-	} else {
-		data, err := helpers.CheckToken(req.Header.Get("authorization"))
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			jsonEncoder.Encode(model.RequestError{
-				Error:   true,
-				Message: "Invalid token",
-			})
-			return
-		}
-		vanity = data
 	}
 
 	defer req.Body.Close()
@@ -131,29 +135,18 @@ func add(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
-func delete(w http.ResponseWriter, req *http.Request) {
+func delete_comment(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
-	var vanity string
-	if req.Header.Get("authorization") == "" {
+	vanity := get_vanity(w, req)
+	if vanity == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
 			Message: "Invalid token",
 		})
 		return
-	} else {
-		data, err := helpers.CheckToken(req.Header.Get("authorization"))
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			jsonEncoder.Encode(model.RequestError{
-				Error:   true,
-				Message: "Invalid token",
-			})
-			return
-		}
-		vanity = data
 	}
 
 	id := strings.TrimPrefix(req.URL.Path, "/comment/")
