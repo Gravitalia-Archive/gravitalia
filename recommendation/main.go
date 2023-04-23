@@ -10,7 +10,7 @@ import (
 	"github.com/Gravitalia/recommendation/database"
 	"github.com/Gravitalia/recommendation/router"
 	"github.com/joho/godotenv"
-	"github.com/robfig/cron"
+	"github.com/robfig/cron/v3"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 
 	// Start a new cron job
 	c := cron.New()
-	c.AddFunc("@daily", func() { // switch to @weekly when Gravitalia grows
+	c.AddFunc("@hourly", func() { // switch to @daily or @weekly when Gravitalia grows
 		log.Println("Starting PageRank and Community Detection...")
 		_, err := database.PageRank()
 		if err != nil {
