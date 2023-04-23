@@ -11,7 +11,8 @@ import (
 	"github.com/Gravitalia/gravitalia/model"
 )
 
-func get_vanity(w http.ResponseWriter, req *http.Request) string {
+// getVanity permit to get vanity
+func getVanity(req *http.Request) string {
 	var vanity string
 	if req.Header.Get("authorization") == "" {
 		return ""
@@ -26,6 +27,20 @@ func get_vanity(w http.ResponseWriter, req *http.Request) string {
 	return vanity
 }
 
+// doesCommentExists checks if a comment really exists
+func doesCommentExists(id string) bool {
+	res, err := database.MakeRequest("MATCH (c:Comment {id: $id}) RETURN c;", map[string]any{"id": id})
+	if err != nil {
+		return false
+	}
+
+	if res != nil {
+		return true
+	} else {
+		return false
+	}
+}
+
 func Handler(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "POST" {
 		add_comment(w, req)
@@ -38,7 +53,7 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
-	vanity := get_vanity(w, req)
+	vanity := getVanity(req)
 	if vanity == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
@@ -119,14 +134,36 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	comment_id, err := database.CommentPost(id, vanity, getbody.Content)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: "Error while posting comment, double check body",
-		})
-		return
+	var comment_id string
+	if getbody.ReplyTo == "" {
+		comment_id, err = database.CommentPost(id, vanity, getbody.Content)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: "Error while posting comment, double check body",
+			})
+			return
+		}
+	} else {
+		if !doesCommentExists(getbody.ReplyTo) {
+			w.WriteHeader(http.StatusBadRequest)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: "Invalid 'reply' ID",
+			})
+			return
+		}
+
+		comment_id, err = database.CommentReply(getbody.ReplyTo, vanity, getbody.Content)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: "Error while posting comment, double check body",
+			})
+			return
+		}
 	}
 
 	jsonEncoder.Encode(model.RequestError{
@@ -139,7 +176,7 @@ func delete_comment(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
-	vanity := get_vanity(w, req)
+	vanity := getVanity(req)
 	if vanity == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
@@ -158,3 +195,45 @@ func delete_comment(w http.ResponseWriter, req *http.Request) {
 		Message: "Deleted comment",
 	})
 }
+
+/*func reply_comment(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	jsonEncoder := json.NewEncoder(w)
+
+	vanity := getVanity(req)
+	if vanity == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: "Invalid token",
+		})
+		return
+	}
+
+	defer req.Body.Close()
+	body, err := io.ReadAll(req.Body)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: "Unable to get body",
+		})
+		return
+	}
+
+	var getbody model.ReplyBody
+	json.Unmarshal(body, &getbody)
+
+
+
+	id := strings.TrimPrefix(req.URL.Path, "/comment/")
+
+	database.DeleteComment(id, vanity)
+
+	jsonEncoder.Encode(model.RequestError{
+		Error:   false,
+		Message: "Deleted comment",
+	})
+}
+*/
