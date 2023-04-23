@@ -30,7 +30,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	jsonEncoder := json.NewEncoder(w)
 
 	relation := strings.TrimPrefix(req.URL.Path, "/relation/")
-	if relation == "" || !contains([]string{"like", "subscribe", "block"}, relation) {
+	if relation == "" || !contains([]string{"like", "subscribe", "block", "love"}, relation) {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
@@ -42,6 +42,8 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	switch relation {
 	case "like":
 		relation = "Like"
+	case "love":
+		relation = "Love"
 	case "subscribe":
 		relation = "Subscriber"
 	case "block":
