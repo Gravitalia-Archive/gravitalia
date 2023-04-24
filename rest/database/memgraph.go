@@ -195,7 +195,7 @@ func GetPost(id string, user string) (model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (author:User)-[:Create]->(p:Post {id: $id}) MATCH (:User)-[l:Like]->(p) WITH author, p, count(DISTINCT l) as numLikes OPTIONAL MATCH (p)<-[:Comment]-(c:Comment)<-[:Wrote]-(u:User) OPTIONAL MATCH (c:Comment)-[love:Love]-(lover:User) WITH author, u, lover, p, numLikes, c, count(DISTINCT love) as loveComment WITH author, p, numLikes, collect({text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user })[..20] as comments RETURN p.id, p.description, p.text, numLikes, author.name, comments;",
+			"MATCH (author:User)-[:Create]->(p:Post {id: $id}) MATCH (:User)-[l:Like]->(p) WITH author, p, count(DISTINCT l) as numLikes OPTIONAL MATCH (p)<-[:Comment]-(c:Comment)<-[:Wrote]-(u:User) OPTIONAL MATCH (c:Comment)-[love:Love]-(lover:User) WITH author, u, lover, p, numLikes, c, count(DISTINCT love) as loveComment WITH author, p, numLikes, collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user })[..20] as comments RETURN p.id, p.description, p.text, numLikes, author.name, comments;",
 			map[string]any{"id": id, "user": user})
 		if err != nil {
 			return nil, err
@@ -287,4 +287,34 @@ func DeleteComment(id string, user string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// GetComments sends 20 comments of a post
+func GetComments(id string, skip int, user string) ([]any, error) {
+	res, err := MakeRequest("MATCH (:Post {id: $id})<-[:Comment]-(c:Comment)<-[:Wrote]-(u:User) OPTIONAL MATCH (c:Comment)-[love:Love]-(lover:User) WITH  u, lover, c, count(DISTINCT love) as loveComment WITH collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user }) as comments SKIP $skip LIMIT 20 RETURN comments;",
+		map[string]any{"id": id, "skip": skip, "user": user})
+	if err != nil {
+		return nil, err
+	}
+
+	if res != nil {
+		return res.([]any), nil
+	} else {
+		return nil, nil
+	}
+}
+
+// GetReply sends 20 replies of a comment
+func GetReply(post_id string, id string, skip int, user string) ([]any, error) {
+	res, err := MakeRequest("MATCH (:Post {id: $post_id})<-[:Comment]-(:Comment {id: $id})<-[:Reply]-(c:Comment)<-[:Wrote]-(u:User) OPTIONAL MATCH (c:Comment)-[love:Love]-(lover:User) WITH  u, lover, c, count(DISTINCT love) as loveComment WITH collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user }) as comments SKIP $skip LIMIT 20 RETURN comments;",
+		map[string]any{"post_id": post_id, "id": id, "skip": skip, "user": user})
+	if err != nil {
+		return nil, err
+	}
+
+	if res != nil {
+		return res.([]any), nil
+	} else {
+		return nil, nil
+	}
 }
