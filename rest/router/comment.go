@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/Gravitalia/gravitalia/database"
@@ -42,10 +43,101 @@ func doesCommentExists(id string) bool {
 }
 
 func Handler(w http.ResponseWriter, req *http.Request) {
-	if req.Method == "POST" {
+	if req.Method == "GET" {
+		get_comment(w, req)
+	} else if req.Method == "POST" {
 		add_comment(w, req)
 	} else if req.Method == "DELETE" {
 		delete_comment(w, req)
+	}
+}
+
+func get_comment(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	jsonEncoder := json.NewEncoder(w)
+
+	vanity := getVanity(req)
+
+	id := strings.TrimPrefix(req.URL.Path, "/comment/")
+	post, err := database.GetPost(id, "")
+	if err != nil || post.Id == "" {
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: "Invalid post",
+		})
+		return
+	}
+
+	stats, err := database.GetProfile(post.Author)
+	if err != nil || stats.Suspended {
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: "Invalid user",
+		})
+		return
+	}
+
+	var allow_post_access bool
+	if stats.Public {
+		allow_post_access = true
+	} else if !stats.Public && req.Header.Get("authorization") != "" {
+		is, err := database.IsUserSubscrirerTo(post.Author, vanity)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: "Invalid relation",
+			})
+			return
+		}
+
+		allow_post_access = is
+	}
+
+	if !allow_post_access {
+		w.WriteHeader(http.StatusBadRequest)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: "You don't have access to this post",
+		})
+		return
+	}
+
+	var skip int
+	if req.URL.Query().Has("skip") {
+		intVar, _ := strconv.Atoi(req.URL.Query().Get("skip"))
+		skip = intVar
+	}
+
+	var comments []any
+	if req.URL.Query().Has("reply") {
+		comments, err = database.GetReply(id, req.URL.Query().Get("reply"), skip*20, vanity)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: "Cannot get replies",
+			})
+			return
+		}
+	} else {
+		comments, err = database.GetComments(id, skip*20, vanity)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: "Cannot get comments",
+			})
+			return
+		}
+	}
+
+	if comments == nil {
+		jsonEncoder.Encode(make([]any, 0))
+	} else {
+		jsonEncoder.Encode(comments)
 	}
 }
 
@@ -195,45 +287,3 @@ func delete_comment(w http.ResponseWriter, req *http.Request) {
 		Message: "Deleted comment",
 	})
 }
-
-/*func reply_comment(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	jsonEncoder := json.NewEncoder(w)
-
-	vanity := getVanity(req)
-	if vanity == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: "Invalid token",
-		})
-		return
-	}
-
-	defer req.Body.Close()
-	body, err := io.ReadAll(req.Body)
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: "Unable to get body",
-		})
-		return
-	}
-
-	var getbody model.ReplyBody
-	json.Unmarshal(body, &getbody)
-
-
-
-	id := strings.TrimPrefix(req.URL.Path, "/comment/")
-
-	database.DeleteComment(id, vanity)
-
-	jsonEncoder.Encode(model.RequestError{
-		Error:   false,
-		Message: "Deleted comment",
-	})
-}
-*/
