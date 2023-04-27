@@ -1,15 +1,15 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"time"
 
-	"log"
-
 	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/router"
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -23,20 +23,21 @@ func main() {
 	http.HandleFunc("/users/", router.Users)
 	http.HandleFunc("/relation/", router.Relation)
 	http.HandleFunc("/posts/", router.Post)
-	http.HandleFunc("/comment/", router.Handler)
+  http.HandleFunc("/comment/", router.Handler)
+  http.Handle("/metrics", promhttp.HandlerFor(helpers.GetRegistery(), promhttp.HandlerOpts{}))
 
 	// Init every helpers function
 	helpers.Init()
 
 	log.Println("Server is starting on port", os.Getenv("PORT"))
+
 	// Create web server
 	server := &http.Server{
 		Addr:              ":" + os.Getenv("PORT"),
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 
-	err := server.ListenAndServe()
-	if err != nil {
+	if err := server.ListenAndServe(); err != nil {
 		panic(err)
 	}
 }
