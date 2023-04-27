@@ -33,13 +33,7 @@ func main() {
 	http.HandleFunc("/users/", router.Users)
 	http.HandleFunc("/relation/", router.Relation)
 	http.HandleFunc("/posts/", router.Post)
-	http.Handle("/metrics",
-		helpers.New(
-			registry, nil).
-			WrapHandler("/metrics", promhttp.HandlerFor(
-				registry,
-				promhttp.HandlerOpts{}),
-			))
+	http.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{Registry: registry}))
 
 	// Init every helpers function
 	helpers.Init()
