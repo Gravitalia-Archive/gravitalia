@@ -33,20 +33,27 @@ func main() {
 	http.HandleFunc("/users/", router.Users)
 	http.HandleFunc("/relation/", router.Relation)
 	http.HandleFunc("/posts/", router.Post)
-	http.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{Registry: registry}))
+	http.Handle(
+		"/metrics",
+		helpers.New(
+			registry, nil).
+			WrapHandler("/metrics", promhttp.HandlerFor(
+				registry,
+				promhttp.HandlerOpts{}),
+			))
 
 	// Init every helpers function
 	helpers.Init()
 
 	log.Println("Server is starting on port", os.Getenv("PORT"))
+
 	// Create web server
 	server := &http.Server{
 		Addr:              ":" + os.Getenv("PORT"),
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 
-	err := server.ListenAndServe()
-	if err != nil {
+	if err := server.ListenAndServe(); err != nil {
 		panic(err)
 	}
 }

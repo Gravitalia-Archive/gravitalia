@@ -9,6 +9,7 @@ import (
 )
 
 type Middleware interface {
+	// WrapHandler wraps the given HTTP handler for instrumentation.
 	WrapHandler(handlerName string, handler http.Handler) http.HandlerFunc
 }
 
