@@ -37,12 +37,16 @@ func main() {
 	// Create a middleware to count requests
 	middleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-			helpers.IncrementRequests()
+			if r.URL.Path == "/metrics" {
+				next.ServeHTTP(w, r)
+			} else {
+				start := time.Now()
+				helpers.IncrementRequests()
 
-			next.ServeHTTP(w, r)
+				next.ServeHTTP(w, r)
 
-			helpers.ObserveRequestDuration(time.Since(start).Seconds())
+				helpers.ObserveRequestDuration(time.Since(start).Seconds())
+			}
 		})
 	}
 
