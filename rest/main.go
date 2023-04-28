@@ -30,16 +30,13 @@ func main() {
 
 	// Create routes
 	router := http.NewServeMux()
-	http.HandleFunc("/", route.Index)
-	http.HandleFunc("/callback", route.OAuth)
-	http.HandleFunc("/v1/new", route.New)
-	http.HandleFunc("/users/", route.Users)
-	http.HandleFunc("/relation/", route.Relation)
-	http.HandleFunc("/posts/", route.Post)
-	http.Handle("/metrics", promhttp.HandlerFor(helpers.GetRegistery(), promhttp.HandlerOpts{}))
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello, world!"))
-	})
+	router.HandleFunc("/", route.Index)
+	router.HandleFunc("/callback", route.OAuth)
+	router.HandleFunc("/v1/new", route.New)
+	router.HandleFunc("/users/", route.Users)
+	router.HandleFunc("/relation/", route.Relation)
+	router.HandleFunc("/posts/", route.Post)
+	router.Handle("/metrics", promhttp.HandlerFor(helpers.GetRegistery(), promhttp.HandlerOpts{}))
 
 	// Init every helpers function
 	helpers.Init()
