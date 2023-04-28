@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Gravitalia/gravitalia/helpers"
-	"github.com/Gravitalia/gravitalia/router"
+	route "github.com/Gravitalia/gravitalia/router"
 	"github.com/joho/godotenv"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -16,14 +16,27 @@ func main() {
 	// Get key-value in .env file
 	godotenv.Load()
 
+	// Create a middleware to count requests
+	middleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			helpers.IncrementRequests()
+
+			next.ServeHTTP(w, r)
+
+			helpers.ObserveRequestDuration(time.Since(start).Seconds())
+		})
+	}
+
 	// Create routes
-	http.HandleFunc("/", router.Index)
-	http.HandleFunc("/callback", router.OAuth)
-	http.HandleFunc("/v1/new", router.New)
-	http.HandleFunc("/users/", router.Users)
-	http.HandleFunc("/relation/", router.Relation)
-	http.HandleFunc("/posts/", router.Post)
-	http.Handle("/metrics", promhttp.HandlerFor(helpers.GetRegistery(), promhttp.HandlerOpts{}))
+	router := http.NewServeMux()
+	router.HandleFunc("/", route.Index)
+	router.HandleFunc("/callback", route.OAuth)
+	router.HandleFunc("/v1/new", route.New)
+	router.HandleFunc("/users/", route.Users)
+	router.HandleFunc("/relation/", route.Relation)
+	router.HandleFunc("/posts/", route.Post)
+	router.Handle("/metrics", promhttp.HandlerFor(helpers.GetRegistery(), promhttp.HandlerOpts{}))
 
 	// Init every helpers function
 	helpers.Init()
@@ -35,6 +48,9 @@ func main() {
 		Addr:              ":" + os.Getenv("PORT"),
 		ReadHeaderTimeout: 3 * time.Second,
 	}
+	server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		middleware(router).ServeHTTP(w, r)
+	})
 
 	if err := server.ListenAndServe(); err != nil {
 		panic(err)

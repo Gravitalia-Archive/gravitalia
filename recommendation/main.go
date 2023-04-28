@@ -8,7 +8,8 @@ import (
 	"log"
 
 	"github.com/Gravitalia/recommendation/database"
-	"github.com/Gravitalia/recommendation/router"
+	"github.com/Gravitalia/recommendation/helpers"
+	route "github.com/Gravitalia/recommendation/router"
 	"github.com/joho/godotenv"
 	"github.com/robfig/cron/v3"
 )
@@ -32,9 +33,22 @@ func main() {
 	})
 	c.Start()
 
+	// Create a middleware to count requests
+	middleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			helpers.IncrementRequests()
+
+			next.ServeHTTP(w, r)
+
+			helpers.ObserveRequestDuration(time.Since(start).Seconds())
+		})
+	}
+
 	// Create routes
-	http.HandleFunc("/", router.Index)
-	http.HandleFunc("/for_you_feed", router.Get)
+	router := http.NewServeMux()
+	router.HandleFunc("/", route.Index)
+	router.HandleFunc("/for_you_feed", route.Get)
 
 	log.Println("Server is starting on port", os.Getenv("RECOMMENDATION_PORT"))
 
@@ -43,6 +57,9 @@ func main() {
 		Addr:              ":" + os.Getenv("RECOMMENDATION_PORT"),
 		ReadHeaderTimeout: 3 * time.Second,
 	}
+	server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		middleware(router).ServeHTTP(w, r)
+	})
 
 	err := server.ListenAndServe()
 	if err != nil {
