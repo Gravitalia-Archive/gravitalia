@@ -30,3 +30,11 @@ func GetRegistery() *prometheus.Registry {
 
 	return registry
 }
+
+func IncrementRequests() {
+	requestsTotal.Inc()
+}
+
+func ObserveRequestDuration(time float64) {
+	requestDuration.Observe(time)
+}
