@@ -11,6 +11,7 @@ import (
 	"github.com/Gravitalia/recommendation/helpers"
 	route "github.com/Gravitalia/recommendation/router"
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/robfig/cron/v3"
 )
 
@@ -49,6 +50,7 @@ func main() {
 	router := http.NewServeMux()
 	router.HandleFunc("/", route.Index)
 	router.HandleFunc("/for_you_feed", route.Get)
+	router.Handle("/metrics", promhttp.HandlerFor(helpers.GetRegistery(), promhttp.HandlerOpts{}))
 
 	log.Println("Server is starting on port", os.Getenv("RECOMMENDATION_PORT"))
 
