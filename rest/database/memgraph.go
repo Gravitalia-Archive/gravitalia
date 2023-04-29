@@ -3,8 +3,12 @@ package database
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"strconv"
+	"time"
 
+	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
@@ -15,8 +19,8 @@ var (
 	Session   = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 )
 
-// makeRequest is a simple way to send a query
-func makeRequest(query string, params map[string]any) (any, error) {
+// MakeRequest is a simple way to send a query
+func MakeRequest(query string, params map[string]any) (any, error) {
 	data, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
 			query,
@@ -39,13 +43,13 @@ func makeRequest(query string, params map[string]any) (any, error) {
 }
 
 // CreateUser allows to create a new user into the graph database
-func CreateUser(id string) (string, error) {
-	_, err := makeRequest("CREATE (:User {name: $id, public: true, suspended: false});", map[string]any{"id": id})
+func CreateUser(id string) (bool, error) {
+	_, err := MakeRequest("CREATE (:User {name: $id, public: true, suspended: false});", map[string]any{"id": id})
 	if err != nil {
-		return "", err
+		return false, err
 	}
 
-	return "test", nil
+	return true, nil
 }
 
 // GetProfile returns followers, following and other account data of the desired user
@@ -127,6 +131,8 @@ func UserRelation(id string, to string, relationType string) (bool, error) {
 		content = "User"
 	case "Like", "View":
 		content = "Post"
+	case "Love":
+		content = "Comment"
 	}
 
 	var identifier string
@@ -136,7 +142,7 @@ func UserRelation(id string, to string, relationType string) (bool, error) {
 		identifier = "id"
 	}
 
-	res, err := makeRequest("MATCH (a:User {name: $id})-[:"+relationType+"]->(b:"+content+"{"+identifier+": $to}) RETURN a;",
+	res, err := MakeRequest("MATCH (a:User {name: $id})-[:"+relationType+"]->(b:"+content+"{"+identifier+": $to}) RETURN a;",
 		map[string]any{"id": id, "to": to})
 	if err != nil {
 		return false, err
@@ -144,7 +150,7 @@ func UserRelation(id string, to string, relationType string) (bool, error) {
 		return false, errors.New("already " + relationType + "ed")
 	}
 
-	res, err = makeRequest("MATCH (a:User {name: $id}), (b:"+content+" {"+identifier+": $to}) CREATE (a)-[r:"+relationType+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
+	res, err = MakeRequest("MATCH (a:User {name: $id}), (b:"+content+" {"+identifier+": $to}) CREATE (a)-[r:"+relationType+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
 		map[string]any{"id": id, "to": to})
 	if err != nil {
 		return false, err
@@ -163,6 +169,8 @@ func UserUnRelation(id string, to string, relationType string) (bool, error) {
 		content = "User"
 	case "Like", "View":
 		content = "Post"
+	case "Love":
+		content = "Comment"
 	}
 
 	var identifier string
@@ -172,7 +180,7 @@ func UserUnRelation(id string, to string, relationType string) (bool, error) {
 		identifier = "id"
 	}
 
-	_, err := makeRequest("MATCH (a:User {name: $id})-[r:"+relationType+"]->(b:"+content+" {"+identifier+": $to}) DELETE r QUERY MEMORY LIMIT 1 KB;",
+	_, err := MakeRequest("MATCH (a:User {name: $id})-[r:"+relationType+"]->(b:"+content+" {"+identifier+": $to}) DELETE r QUERY MEMORY LIMIT 1 KB;",
 		map[string]any{"id": id, "to": to})
 	if err != nil {
 		return false, err
@@ -182,13 +190,13 @@ func UserUnRelation(id string, to string, relationType string) (bool, error) {
 }
 
 // GetPost allows to get data of a post
-func GetPost(id string) (model.Post, error) {
+func GetPost(id string, user string) (model.Post, error) {
 	var post model.Post
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (:User)-[:Create]->(p:Post {id: $id}) MATCH (:User)-[l:Like]->(p) WITH p, count(DISTINCT l) as numLikes OPTIONAL MATCH (p)<-[:Comment]-(c:Comment)<-[:Wrote]-(u:User) WITH p, numLikes, collect({text: c.text, timestamp: c.timestamp, user: u.name})[..20] as comments RETURN p.id, p.description, p.text, numLikes, comments;",
-			map[string]any{"id": id})
+			"MATCH (author:User)-[:Create]->(p:Post {id: $id}) MATCH (:User)-[l:Like]->(p) WITH author, p, count(DISTINCT l) as numLikes OPTIONAL MATCH (p)<-[:Comment]-(c:Comment)<-[:Wrote]-(u:User) OPTIONAL MATCH (c:Comment)-[love:Love]-(lover:User) WITH author, u, lover, p, numLikes, c, count(DISTINCT love) as loveComment WITH author, p, numLikes, collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user })[..20] as comments RETURN p.id, p.description, p.text, numLikes, author.name, comments;",
+			map[string]any{"id": id, "user": user})
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +211,8 @@ func GetPost(id string) (model.Post, error) {
 			post.Description = record.Values[1].(string)
 			post.Text = record.Values[2].(string)
 			post.Like = record.Values[3].(int64)
-			post.Comments = record.Values[4].([]any)
+			post.Author = record.Values[4].(string)
+			post.Comments = record.Values[5].([]any)
 
 			return post, nil
 		}
@@ -211,6 +220,7 @@ func GetPost(id string) (model.Post, error) {
 		return nil, result.Err()
 	})
 	if err != nil {
+		fmt.Println(err)
 		return model.Post{}, err
 	}
 
@@ -219,7 +229,7 @@ func GetPost(id string) (model.Post, error) {
 
 // DeleteUser allows to remove every relations, posts, comments and user
 func DeleteUser(vanity string) (bool, error) {
-	_, err := makeRequest("MATCH (u:User {name: $id})-[:Create]->(p:Post) DETACH DELETE p WITH u MATCH (u)-[:Commented]->(c:Comment) DETACH DELETE c WITH u MATCH (u)-[r]->() DELETE r WITH u DETACH DELETE u;",
+	_, err := MakeRequest("MATCH (u:User {name: $id})-[:Create]->(p:Post) DETACH DELETE p WITH u MATCH (u)-[:Commented]->(c:Comment) DETACH DELETE c WITH u MATCH (u)-[r]->() DELETE r WITH u DETACH DELETE u;",
 		map[string]any{"id": vanity})
 	if err != nil {
 		return false, err
@@ -232,7 +242,7 @@ func DeleteUser(vanity string) (bool, error) {
 // and respond with true if a relation (edge) exists
 // or with false if no relation exists
 func IsUserSubscrirerTo(id string, user string) (bool, error) {
-	res, err := makeRequest("MATCH (a:User)-[:Subscriber]->(b:User) WHERE a.name = $id AND b.name = $to RETURN a;",
+	res, err := MakeRequest("MATCH (a:User {name: $id})-[:Subscriber]->(b:User {name: $to}) RETURN a;",
 		map[string]any{"id": id, "to": user})
 	if err != nil {
 		return false, err
@@ -242,5 +252,69 @@ func IsUserSubscrirerTo(id string, user string) (bool, error) {
 		return true, nil
 	} else {
 		return false, nil
+	}
+}
+
+// CommentPost allows to post a comment on a post
+func CommentPost(id string, user string, content string) (string, error) {
+	comment_id := helpers.Generate()
+
+	_, err := MakeRequest("CREATE (c:Comment {id: $comment_id, text: $content, timestamp: "+strconv.FormatInt(time.Now().Unix(), 10)+"}) WITH c MATCH (p:Post {id: $to}) MATCH (u:User {name: $id}) CREATE (c)-[:Comment]->(p) CREATE (u)-[:Wrote]->(c);", map[string]any{"id": user, "to": id, "comment_id": comment_id, "content": content})
+	if err != nil {
+		return "", err
+	}
+
+	return comment_id, nil
+}
+
+// CommentReply allows to post a comment on another comment
+func CommentReply(id string, user string, content string) (string, error) {
+	comment_id := helpers.Generate()
+
+	_, err := MakeRequest("CREATE (new_comment:Comment {id: $comment_id, text: $content, timestamp: "+strconv.FormatInt(time.Now().Unix(), 10)+"}) WITH new_comment MATCH (ref:Comment {id: $to})<-[:Wrote]-(u:User) SET new_comment.replied_to = u.name WITH ref, new_comment MATCH (u:User {name: $id}) CREATE (new_comment)-[:Reply]->(ref) CREATE (u)-[:Wrote]->(new_comment);", map[string]any{"id": user, "to": id, "comment_id": comment_id, "content": content})
+	if err != nil {
+		return "", err
+	}
+
+	return comment_id, nil
+}
+
+// DeleteComment allows to remove a comment on a post
+func DeleteComment(id string, user string) (bool, error) {
+	_, err := MakeRequest("MATCH (r:Comment)-[:Reply]-(c:Comment {id: $to})<-[:Wrote]-(u:User {name: $id}) DETACH DELETE r, c;", map[string]any{"id": user, "to": id})
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// GetComments sends 20 comments of a post
+func GetComments(id string, skip int, user string) ([]any, error) {
+	res, err := MakeRequest("MATCH (:Post {id: $id})<-[:Comment]-(c:Comment)<-[:Wrote]-(u:User) OPTIONAL MATCH (c:Comment)-[love:Love]-(lover:User) WITH  u, lover, c, count(DISTINCT love) as loveComment WITH collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user }) as comments SKIP $skip LIMIT 20 RETURN comments;",
+		map[string]any{"id": id, "skip": skip, "user": user})
+	if err != nil {
+		return nil, err
+	}
+
+	if res != nil {
+		return res.([]any), nil
+	} else {
+		return nil, nil
+	}
+}
+
+// GetReply sends 20 replies of a comment
+func GetReply(post_id string, id string, skip int, user string) ([]any, error) {
+	res, err := MakeRequest("MATCH (:Post {id: $post_id})<-[:Comment]-(:Comment {id: $id})<-[:Reply]-(c:Comment)<-[:Wrote]-(u:User) OPTIONAL MATCH (c:Comment)-[love:Love]-(lover:User) WITH  u, lover, c, count(DISTINCT love) as loveComment WITH collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user }) as comments SKIP $skip LIMIT 20 RETURN comments;",
+		map[string]any{"post_id": post_id, "id": id, "skip": skip, "user": user})
+	if err != nil {
+		return nil, err
+	}
+
+	if res != nil {
+		return res.([]any), nil
+	} else {
+		return nil, nil
 	}
 }

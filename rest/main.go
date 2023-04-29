@@ -40,6 +40,7 @@ func main() {
 	router.HandleFunc("/users/", route.Users)
 	router.HandleFunc("/relation/", route.Relation)
 	router.HandleFunc("/posts/", route.Post)
+  http.HandleFunc("/comment/", router.Handler)
 	router.Handle("/metrics", promhttp.HandlerFor(helpers.GetRegistery(), promhttp.HandlerOpts{}))
 
 	// Init every helpers function
