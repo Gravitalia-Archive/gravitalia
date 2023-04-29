@@ -10,6 +10,7 @@ import (
 
 	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
+	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
@@ -22,6 +23,7 @@ var (
 func Init() {
 	driver, _ := neo4j.NewDriverWithContext(os.Getenv("GRAPH_URL"), neo4j.BasicAuth(os.Getenv("GRAPH_USERNAME"), os.Getenv("GRAPH_PASSWORD"), ""))
 	Session = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	Mem = memcache.New(os.Getenv("MEM_URL"))
 }
 
 // MakeRequest is a simple way to send a query
