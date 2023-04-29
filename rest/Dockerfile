@@ -1,4 +1,4 @@
-FROM golang:1.19 AS build
+FROM golang:1.20 AS build
 EXPOSE 8888
 
 RUN mkdir /app
