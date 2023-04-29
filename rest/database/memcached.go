@@ -1,8 +1,12 @@
 package database
 
-import "github.com/bradfitz/gomemcache/memcache"
+import (
+	"os"
 
-var Mem = memcache.New("127.0.0.1:11211")
+	"github.com/bradfitz/gomemcache/memcache"
+)
+
+var Mem = memcache.New(os.Getenv("MEM_URL"))
 
 // Set permits to set a temporary value, on the cache
 // via Memcached
