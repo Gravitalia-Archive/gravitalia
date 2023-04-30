@@ -133,7 +133,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 
 			// Check if account has been deleted 1 hour ago
 			val, _ = database.Mem.Get(user.Vanity + "-gd")
-			if val != nil || string(val.Value) == "ok" {
+			if val != nil && string(val.Value) == "ok" {
 				w.WriteHeader(http.StatusBadRequest)
 				jsonEncoder.Encode(model.RequestError{
 					Error:   true,
