@@ -273,10 +273,10 @@ func CommentPost(id string, user string, content string) (string, error) {
 }
 
 // CommentReply allows to post a comment on another comment
-func CommentReply(id string, user string, content string) (string, error) {
+func CommentReply(id string, user string, content string, original_comment string) (string, error) {
 	comment_id := helpers.Generate()
 
-	_, err := MakeRequest("CREATE (new_comment:Comment {id: $comment_id, text: $content, timestamp: "+strconv.FormatInt(time.Now().Unix(), 10)+"}) WITH new_comment MATCH (ref:Comment {id: $to})<-[:Wrote]-(u:User) SET new_comment.replied_to = u.name WITH ref, new_comment MATCH (u:User {name: $id}) CREATE (new_comment)-[:Reply]->(ref) CREATE (u)-[:Wrote]->(new_comment);", map[string]any{"id": user, "to": id, "comment_id": comment_id, "content": content})
+	_, err := MakeRequest("CREATE (new_comment:Comment {id: $comment_id, text: $content, timestamp: "+strconv.FormatInt(time.Now().Unix(), 10)+"}) WITH new_comment MATCH (:Comment {id: $to})<-[:Wrote]-(u:User) SET new_comment.replied_to = u.name WITH new_comment MATCH (u:User {name: $id}) WITH new_comment, u MATCH (o_comment:Comment {id: $original_comment}) CREATE (new_comment)-[:Reply]->(o_comment) CREATE (u)-[:Wrote]->(new_comment);", map[string]any{"id": user, "to": id, "comment_id": comment_id, "content": content, "original_comment": original_comment})
 	if err != nil {
 		return "", err
 	}
