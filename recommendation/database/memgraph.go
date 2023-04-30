@@ -9,10 +9,15 @@ import (
 )
 
 var (
-	ctx       = context.Background()
-	driver, _ = neo4j.NewDriverWithContext("bolt://localhost:7687", neo4j.BasicAuth(os.Getenv("GRAPH_USERNAME"), os.Getenv("GRAPH_PASSWORD"), ""))
-	Session   = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	ctx     = context.Background()
+	Session neo4j.SessionWithContext
 )
+
+// Init create the main variable for neo4j connection
+func Init() {
+	driver, _ := neo4j.NewDriverWithContext(os.Getenv("GRAPH_URL"), neo4j.BasicAuth(os.Getenv("GRAPH_USERNAME"), os.Getenv("GRAPH_PASSWORD"), ""))
+	Session = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+}
 
 // loopResults allows to assort posts in an array
 func loopResults(result neo4j.ResultWithContext) []model.Post {

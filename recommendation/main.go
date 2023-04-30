@@ -34,6 +34,9 @@ func main() {
 	})
 	c.Start()
 
+	// Init database
+	database.Init()
+
 	// Create a middleware to count requests
 	middleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
