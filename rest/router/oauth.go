@@ -121,16 +121,6 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			token, err := helpers.CreateToken(user.Vanity)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				jsonEncoder.Encode(model.RequestError{
-					Error:   true,
-					Message: "Internal error:" + err.Error(),
-				})
-				return
-			}
-
 			// Check if account has been deleted 1 hour ago
 			val, _ = database.Mem.Get(user.Vanity + "-gd")
 			if val != nil && string(val.Value) == "ok" {
@@ -144,11 +134,17 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 
 			database.CreateUser(user.Vanity)
 
-			w.WriteHeader(http.StatusOK)
-			jsonEncoder.Encode(model.RequestError{
-				Error:   false,
-				Message: token,
-			})
+			token, err := helpers.CreateToken(user.Vanity)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				jsonEncoder.Encode(model.RequestError{
+					Error:   true,
+					Message: "Internal error:" + err.Error(),
+				})
+				return
+			}
+
+			http.Redirect(w, req, os.Getenv("REDIRECT_URL")+"?token="+token, http.StatusTemporaryRedirect)
 		}
 	} else {
 		state := randomString(24)
