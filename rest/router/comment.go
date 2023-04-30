@@ -42,6 +42,17 @@ func doesCommentExists(id string) bool {
 	}
 }
 
+// isAReply checks if the comment ID is a reply
+// if yes, return the original comment
+func isAReply(id string) string {
+	res, err := database.MakeRequest("MATCH (:Comment {id: $id})-[:Reply]->(c:Comment) RETURN c.id;", map[string]any{"id": id})
+	if err != nil {
+		return ""
+	}
+
+	return res.(string)
+}
+
 func Handler(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "GET" {
 		get_comment(w, req)
@@ -247,14 +258,27 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		comment_id, err = database.CommentReply(getbody.ReplyTo, vanity, getbody.Content)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			jsonEncoder.Encode(model.RequestError{
-				Error:   true,
-				Message: "Error while posting comment, double check body",
-			})
-			return
+		original_comment_id := isAReply(getbody.ReplyTo)
+		if original_comment_id == "" {
+			comment_id, err = database.CommentReply(getbody.ReplyTo, vanity, getbody.Content, getbody.ReplyTo)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				jsonEncoder.Encode(model.RequestError{
+					Error:   true,
+					Message: "Error while posting comment, double check body",
+				})
+				return
+			}
+		} else {
+			comment_id, err = database.CommentReply(getbody.ReplyTo, vanity, getbody.Content, original_comment_id)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				jsonEncoder.Encode(model.RequestError{
+					Error:   true,
+					Message: "Error while posting comment, double check body",
+				})
+				return
+			}
 		}
 	}
 
