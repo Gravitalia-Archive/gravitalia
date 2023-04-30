@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -227,7 +226,6 @@ func GetPost(id string, user string) (model.Post, error) {
 		return nil, result.Err()
 	})
 	if err != nil {
-		fmt.Println(err)
 		return model.Post{}, err
 	}
 
