@@ -133,7 +133,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 
 			// Check if account has been deleted 1 hour ago
 			val, _ = database.Mem.Get(user.Vanity + "-gd")
-			if val != nil && string(val.Value) == "ok" {
+			if val != nil || string(val.Value) == "ok" {
 				w.WriteHeader(http.StatusBadRequest)
 				jsonEncoder.Encode(model.RequestError{
 					Error:   true,
@@ -153,6 +153,6 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 	} else {
 		state := randomString(24)
 		database.Set(state, "ok", 500)
-		http.Redirect(w, req, os.Getenv("OAUTH_HOST")+"/oauth2/authorize?response_type=code&client_id=suba&scope=user&state="+state, http.StatusTemporaryRedirect)
+		http.Redirect(w, req, os.Getenv("OAUTH_HOST")+"/oauth2/authorize?client_id=suba&scope=user&redirect_uri=https://api.gravitalia.com/callback&response_type=code&state="+state, http.StatusTemporaryRedirect)
 	}
 }
