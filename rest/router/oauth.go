@@ -144,7 +144,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			http.Redirect(w, req, os.Getenv("REDIRECT_URL")+"?token="+token, http.StatusTemporaryRedirect)
+			http.Redirect(w, req, "https://www.gravitalia.com/callback?token="+token, http.StatusTemporaryRedirect)
 		}
 	} else {
 		state := randomString(24)
