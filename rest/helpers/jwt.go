@@ -44,14 +44,7 @@ func CreateToken(vanity string) (string, error) {
 }
 
 func CheckToken(token string) (string, error) {
-	var rsa_public_key string
-	if os.Getenv("RSA_PUBLIC_KEY") == "" {
-		rsa_public_key = ""
-	} else {
-		rsa_public_key = os.Getenv("RSA_PUBLIC_KEY")
-	}
-
-	block, _ := pem.Decode([]byte(rsa_public_key))
+	block, _ := pem.Decode([]byte(os.Getenv("RSA_PUBLIC_KEY")))
 	key, _ := x509.ParsePKIXPublicKey(block.Bytes)
 
 	verifier, err := jwt.NewVerifierRS(jwt.RS256, key.(*rsa.PublicKey))
