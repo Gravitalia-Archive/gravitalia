@@ -1,9 +1,11 @@
 package helpers
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
-	"fmt"
 	"os"
 	"time"
 
@@ -12,16 +14,16 @@ import (
 
 // CreateToken allows to create JWT tokens
 func CreateToken(vanity string) (string, error) {
-	var key string
-	if os.Getenv("JWT_SECRET") != "" {
-		key = os.Getenv("JWT_SECRET")
+	var rsa_privaye_key string
+	if os.Getenv("RSA_PRIVATE_KEY") == "" {
+		return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", nil
 	} else {
-		key = "secret"
+		rsa_privaye_key = os.Getenv("RSA_PRIVATE_KEY")
 	}
+	block, _ := pem.Decode([]byte(rsa_privaye_key))
+	key, _ := x509.ParsePKCS1PrivateKey(block.Bytes)
 
-	fmt.Println(key)
-
-	signer, err := jwt.NewSignerHS(jwt.HS512, []byte(key))
+	signer, err := jwt.NewSignerRS(jwt.RS256, key)
 	if err != nil {
 		return "", err
 	}
@@ -42,14 +44,10 @@ func CreateToken(vanity string) (string, error) {
 }
 
 func CheckToken(token string) (string, error) {
-	var key string
-	if os.Getenv("JWT_SECRET") != "" {
-		key = os.Getenv("JWT_SECRET")
-	} else {
-		key = "secret"
-	}
+	block, _ := pem.Decode([]byte(os.Getenv("RSA_PUBLIC_KEY")))
+	key, _ := x509.ParsePKIXPublicKey(block.Bytes)
 
-	verifier, err := jwt.NewVerifierHS(jwt.HS512, []byte(key))
+	verifier, err := jwt.NewVerifierRS(jwt.RS256, key.(*rsa.PublicKey))
 	if err != nil {
 		return "", err
 	}
