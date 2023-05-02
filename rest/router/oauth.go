@@ -149,6 +149,6 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 	} else {
 		state := randomString(24)
 		database.Set(state, "ok", 500)
-		http.Redirect(w, req, os.Getenv("OAUTH_HOST")+"/oauth2/authorize?client_id=suba&scope=user&redirect_uri=https://api.gravitalia.com/callback&response_type=code&state="+state, http.StatusTemporaryRedirect)
+		http.Redirect(w, req, os.Getenv("OAUTH_HOST")+"/oauth2/authorize?client_id=suba&scope=identity&redirect_uri=https://api.gravitalia.com/callback&response_type=code&state="+state, http.StatusTemporaryRedirect)
 	}
 }
