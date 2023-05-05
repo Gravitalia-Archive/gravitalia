@@ -63,11 +63,9 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 
 		val, err := database.Mem.Get(req.URL.Query().Get("state"))
 		if err != nil || string(val.Value) != "ok" {
-			w.WriteHeader(http.StatusBadRequest)
-			jsonEncoder.Encode(model.RequestError{
-				Error:   true,
-				Message: "Invalid state",
-			})
+			state := randomString(24)
+			database.Set(state, "ok", 500)
+			http.Redirect(w, req, os.Getenv("OAUTH_HOST")+"/oauth2/authorize?client_id=suba&scope=identity&redirect_uri=https://api.gravitalia.com/callback&response_type=code&state="+state, http.StatusTemporaryRedirect)
 		} else {
 			postBody, _ := json.Marshal(struct {
 				ClientId     string `json:"client_id"`
