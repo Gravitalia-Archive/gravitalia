@@ -9,9 +9,18 @@ import (
 	"github.com/Gravitalia/recommendation/model"
 )
 
+// Handler allows to choose the best route based on the method
+func Handler(w http.ResponseWriter, req *http.Request) {
+	if req.Method == "OPTIONS" {
+		Index(w, req)
+	} else if req.Method == "GET" {
+		recommendationGet(w, req)
+	}
+}
+
 // Get handle the route for /for_you_feed and return
 // the posts that the user may like
-func Get(w http.ResponseWriter, req *http.Request) {
+func recommendationGet(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
