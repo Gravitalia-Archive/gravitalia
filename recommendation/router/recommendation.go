@@ -82,7 +82,7 @@ func recommendationGet(w http.ResponseWriter, req *http.Request) {
 
 	posts = helpers.RemoveDuplicates(posts)
 
-	ids := []string{}
+	var ids []string
 
 	for _, post := range posts {
 		ids = append(ids, post.Id)
