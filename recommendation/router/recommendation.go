@@ -14,13 +14,13 @@ func Handler(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "OPTIONS" {
 		Index(w, req)
 	} else if req.Method == "GET" {
-		recommendation_get(w, req)
+		recommendationGet(w, req)
 	}
 }
 
 // Get handle the route for /for_you_feed and return
 // the posts that the user may like
-func recommendation_get(w http.ResponseWriter, req *http.Request) {
+func recommendationGet(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
