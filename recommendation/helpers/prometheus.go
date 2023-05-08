@@ -19,6 +19,8 @@ var (
 	})
 )
 
+// GetRegistery is used to get prometheus
+// saved data
 func GetRegistery() *prometheus.Registry {
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(
@@ -31,10 +33,14 @@ func GetRegistery() *prometheus.Registry {
 	return registry
 }
 
+// IncrementRequests allows to increment
+// the number of total requests
 func IncrementRequests() {
 	requestsTotal.Inc()
 }
 
+// ObserveRequestDuration allows to create a
+// new record of time duration
 func ObserveRequestDuration(time float64) {
 	requestDuration.Observe(time)
 }
