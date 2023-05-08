@@ -43,6 +43,8 @@ func CreateToken(vanity string) (string, error) {
 	return token.String(), nil
 }
 
+// CheckToken allows to check the authenticity of a token
+// and return the user vanity if it is a real token
 func CheckToken(token string) (string, error) {
 	block, _ := pem.Decode([]byte(os.Getenv("RSA_PUBLIC_KEY")))
 	key, _ := x509.ParsePKIXPublicKey(block.Bytes)
