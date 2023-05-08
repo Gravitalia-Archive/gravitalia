@@ -1,7 +1,10 @@
 package helpers
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"os"
 	"time"
@@ -9,41 +12,43 @@ import (
 	"github.com/cristalhq/jwt/v5"
 )
 
-// Check allow to check the token authenticity
-func Check(token string) (string, error) {
-	var key string
-	if os.Getenv("JWT_SECRET") != "" {
-		key = os.Getenv("JWT_SECRET")
-	} else {
-		key = "secret"
-	}
+// CheckToken allows to check the authenticity of a token
+// and return the user vanity if it is a real token
+func CheckToken(token string) (string, error) {
+	block, _ := pem.Decode([]byte(os.Getenv("RSA_PUBLIC_KEY")))
+	key, _ := x509.ParsePKIXPublicKey(block.Bytes)
 
-	hsverifier, err := jwt.NewVerifierHS(jwt.HS512, []byte(key))
+	verifier, err := jwt.NewVerifierRS(jwt.RS256, key.(*rsa.PublicKey))
 	if err != nil {
 		return "", err
 	}
 
-	parsedToken, err := jwt.Parse([]byte(token), hsverifier)
+	tokenBytes := []byte(token)
+	newToken, err := jwt.Parse(tokenBytes, verifier)
 	if err != nil {
 		return "", err
 	}
 
-	if err = hsverifier.Verify(parsedToken); err != nil {
+	err = verifier.Verify(newToken)
+	if err != nil {
 		return "", err
 	}
 
-	var claims jwt.RegisteredClaims
-	if err = json.Unmarshal(parsedToken.Claims(), &claims); err != nil {
+	// get Registered claims
+	var newClaims jwt.RegisteredClaims
+	err = json.Unmarshal(newToken.Claims(), &newClaims)
+	if err != nil {
 		return "", err
 	}
 
-	if err = jwt.ParseClaims([]byte(token), hsverifier, &claims); err != nil {
+	err = jwt.ParseClaims(tokenBytes, verifier, &newClaims)
+	if err != nil {
 		return "", err
 	}
 
-	if !claims.IsValidAt(time.Now()) {
+	if !newClaims.IsValidAt(time.Now()) {
 		return "", errors.New("invalid time")
 	}
 
-	return claims.Subject, nil
+	return newClaims.Subject, nil
 }

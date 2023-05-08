@@ -33,7 +33,7 @@ func recommendationGet(w http.ResponseWriter, req *http.Request) {
 		})
 		return
 	} else {
-		data, err := helpers.Check(req.Header.Get("authorization"))
+		data, err := helpers.CheckToken(req.Header.Get("authorization"))
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			jsonEncoder.Encode(model.RequestError{
