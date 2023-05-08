@@ -3,7 +3,7 @@ module github.com/Gravitalia/recommendation
 go 1.20
 
 require (
-	github.com/cristalhq/jwt/v5 v5.0.1
+	github.com/cristalhq/jwt/v5 v5.1.0
 	github.com/joho/godotenv v1.5.1
 	github.com/neo4j/neo4j-go-driver/v5 v5.8.0
 	github.com/prometheus/client_golang v1.15.1
