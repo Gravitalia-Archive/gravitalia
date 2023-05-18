@@ -2,6 +2,7 @@ package router
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -10,6 +11,17 @@ import (
 	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
 )
+
+func UserHandler(w http.ResponseWriter, req *http.Request) {
+	id := strings.TrimPrefix(req.URL.Path, "/users/")
+	if id != "" && req.Method == "GET" {
+		Users(w, req)
+	} else if id != "" && id == "@me" && req.Method == "DELETE" {
+		Delete(w, req)
+	} else if id != "" && id == "@me" && req.Method == "PATCH" {
+		update(w, req)
+	}
+}
 
 func Users(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -136,6 +148,53 @@ func Delete(w http.ResponseWriter, req *http.Request) {
 	}
 
 	database.Set(vanity+"-gd", "ok", 3600)
+
+	jsonEncoder.Encode(model.RequestError{
+		Error:   false,
+		Message: "OK",
+	})
+}
+
+// Handle patch method, allows to update user data
+func update(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	jsonEncoder := json.NewEncoder(w)
+
+	vanity, err := helpers.CheckToken(req.Header.Get("authorization"))
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: "Invalid token",
+		})
+		return
+	}
+
+	defer req.Body.Close()
+	body, err := io.ReadAll(req.Body)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: "Unable to get body",
+		})
+		return
+	}
+
+	var getbody model.UpdateBody
+	json.Unmarshal(body, &getbody)
+
+	if getbody.Public != nil {
+		_, err := database.MakeRequest("MATCH (u:User {name: $id}) SET u.public = $public;", map[string]interface{}{"id": vanity, "public": *getbody.Public})
+		if err != nil {
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: "OK",
+			})
+			return
+		}
+	}
 
 	jsonEncoder.Encode(model.RequestError{
 		Error:   false,

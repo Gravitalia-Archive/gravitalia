@@ -38,7 +38,7 @@ func main() {
 	router.HandleFunc("/", route.Index)
 	router.HandleFunc("/callback", route.OAuth)
 	router.HandleFunc("/v1/new", route.New)
-	router.HandleFunc("/users/", route.Users)
+	router.HandleFunc("/users/", route.UserHandler)
 	router.HandleFunc("/relation/", route.Relation)
 	router.HandleFunc("/posts/", route.Post)
 	router.HandleFunc("/comment/", route.Handler)
