@@ -12,37 +12,6 @@ import (
 	"github.com/cristalhq/jwt/v5"
 )
 
-// CreateToken allows to create JWT tokens
-func CreateToken(vanity string) (string, error) {
-	var rsa_privaye_key string
-	if os.Getenv("RSA_PRIVATE_KEY") == "" {
-		return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", nil
-	} else {
-		rsa_privaye_key = os.Getenv("RSA_PRIVATE_KEY")
-	}
-	block, _ := pem.Decode([]byte(rsa_privaye_key))
-	key, _ := x509.ParsePKCS1PrivateKey(block.Bytes)
-
-	signer, err := jwt.NewSignerRS(jwt.RS256, key)
-	if err != nil {
-		return "", err
-	}
-
-	now := time.Now().UTC()
-
-	token, err := jwt.NewBuilder(signer).Build(&jwt.RegisteredClaims{
-		Subject:   vanity,
-		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
-		ExpiresAt: jwt.NewNumericDate(time.Date(now.Year(), now.Month(), now.Day()+7, now.Hour(), now.Minute(), 0, 0, time.UTC)),
-		Issuer:    "https://www.gravitalia.com",
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return token.String(), nil
-}
-
 // CheckToken allows to check the authenticity of a token
 // and return the user vanity if it is a real token
 func CheckToken(token string) (string, error) {
