@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Gravitalia/gravitalia/database"
-	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
 )
 
@@ -23,7 +22,7 @@ const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 func randomString(n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		rand.Seed(time.Now().UnixNano())
+		rand.New(rand.NewSource(time.Now().UnixNano()))
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return string(b)
@@ -132,17 +131,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 
 			database.CreateUser(user.Vanity)
 
-			token, err := helpers.CreateToken(user.Vanity)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				jsonEncoder.Encode(model.RequestError{
-					Error:   true,
-					Message: "Internal error:" + err.Error(),
-				})
-				return
-			}
-
-			http.Redirect(w, req, "https://www.gravitalia.com/callback?token="+token, http.StatusTemporaryRedirect)
+			http.Redirect(w, req, "https://www.gravitalia.com/callback?token="+data.Message, http.StatusTemporaryRedirect)
 		}
 	} else {
 		state := randomString(24)
