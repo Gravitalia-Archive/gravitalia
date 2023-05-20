@@ -43,6 +43,7 @@ func main() {
 	router.HandleFunc("/posts/", route.Post)
 	router.HandleFunc("/comment/", route.Handler)
 	router.HandleFunc("/account/deletion", route.Delete)
+	router.HandleFunc("/account/suspend", route.Suspend)
 	router.Handle("/metrics", promhttp.HandlerFor(helpers.GetRegistery(), promhttp.HandlerOpts{}))
 
 	// Init every helpers function and database variables
