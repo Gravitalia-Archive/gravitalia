@@ -253,11 +253,7 @@ func IsUserSubscrirerTo(id string, user string) (bool, error) {
 		return false, err
 	}
 
-	if res != nil {
-		return true, nil
-	} else {
-		return false, nil
-	}
+	return res != nil, nil
 }
 
 // CommentPost allows to post a comment on a post
