@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"fmt"
 
 	"github.com/Gravitalia/gravitalia/database"
 	"github.com/Gravitalia/gravitalia/helpers"
@@ -22,6 +23,8 @@ func main() {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/metrics" {
 				next.ServeHTTP(w, r)
+			} else if r.Method == "OPTIONS" {
+				fmt.Fprintf(w, "OK")
 			} else {
 				start := time.Now()
 				helpers.IncrementRequests()
