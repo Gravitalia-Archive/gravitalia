@@ -28,7 +28,7 @@ func UserHandler(w http.ResponseWriter, req *http.Request) {
 // and respond with true if a relation (edge) exists
 // or with false if no relation exists
 func isBlockedAccount(id string, user string) (bool, error) {
-	res, err := database.MakeRequest("MATCH (a:User {name: $id})-[:Block]->(b:User {name: $to}) RETURN a;",
+	res, err := database.MakeRequest("MATCH (a:User {name: $id})-[:Block]-(b:User {name: $to}) RETURN a;",
 		map[string]any{"id": id, "to": user})
 	if err != nil {
 		return false, err
