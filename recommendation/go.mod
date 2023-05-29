@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/cristalhq/jwt/v5 v5.1.0
 	github.com/joho/godotenv v1.5.1
-	github.com/neo4j/neo4j-go-driver/v5 v5.8.1
+	github.com/neo4j/neo4j-go-driver/v5 v5.9.0
 	github.com/openzipkin/zipkin-go v0.4.1
 	github.com/prometheus/client_golang v1.15.1
 	github.com/robfig/cron/v3 v3.0.1
