@@ -22,6 +22,8 @@ func main() {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/metrics" {
 				next.ServeHTTP(w, r)
+			} else if req.Method == "OPTIONS" {
+				fmt.Fprintf(w, "OK")
 			} else {
 				start := time.Now()
 				helpers.IncrementRequests()
