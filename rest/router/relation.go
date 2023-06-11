@@ -11,6 +11,8 @@ import (
 	"github.com/Gravitalia/gravitalia/model"
 )
 
+const INVALID_TOKEN string = "Invalid token"
+
 // contains checks if a string is present in a slice of strings
 func contains(s []string, str string) bool {
 	for _, v := range s {
@@ -58,22 +60,21 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var vanity string
-	authHeader := req.Header.Get("Authorization")
-	if authHeader == "" {
+	if req.Header.Get("Authorization") == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid token",
+			Message: INVALID_TOKEN,
 		})
 		return
 	}
 
-	data, err := helpers.CheckToken(authHeader)
+	data, err := helpers.CheckToken(req.Header.Get("Authorization"))
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid token",
+			Message: INVALID_TOKEN,
 		})
 		return
 	}
@@ -164,7 +165,7 @@ func Exists(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid token",
+			Message: INVALID_TOKEN,
 		})
 		return
 	}
@@ -174,7 +175,7 @@ func Exists(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid token",
+			Message: INVALID_TOKEN,
 		})
 		return
 	}
