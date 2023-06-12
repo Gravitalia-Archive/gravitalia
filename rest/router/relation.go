@@ -9,25 +9,28 @@ import (
 	"github.com/Gravitalia/gravitalia/database"
 	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
-const INVALID_TOKEN string = "Invalid token"
+const (
+	ErrorInvalidToken        = "Invalid token"
+	ErrorUnableReadBody      = "Unable to read body"
+	ErrorInvalidBody         = "Invalid body"
+	ErrorInvalidRelationType = "Invalid relation type"
+	ErrorInvalidQuery        = "Invalid query"
+)
 
-// contains checks if a string is present in a slice of strings
-func contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-	return false
-}
+const (
+	OkCreatedRelation = "Created relation"
+	OkDeletedRelation = "Deleted relation"
+)
 
-// RelationHandler re-route to the requested handler
+// RelationHandler re-routes to the requested handler
 func RelationHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
+	if r.Method == http.MethodGet {
 		Exists(w, r)
-	} else if r.Method == "POST" {
+	} else if r.Method == http.MethodPost {
 		Relation(w, r)
 	}
 }
@@ -38,25 +41,21 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
-	relation := strings.TrimPrefix(req.URL.Path, "/relation/")
-	if relation == "" || !contains([]string{"like", "subscribe", "block", "love"}, relation) {
+	relation := cases.Title(language.English, cases.Compact).String(strings.TrimPrefix(req.URL.Path, "/relation/"))
+	if relation == "" || func() bool {
+		for _, v := range []string{"Like", "Subscribe", "Block", "Love"} {
+			if v == relation {
+				return false
+			}
+		}
+		return true
+	}() {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid relation type",
+			Message: ErrorInvalidRelationType,
 		})
 		return
-	}
-
-	switch relation {
-	case "like":
-		relation = "Like"
-	case "love":
-		relation = "Love"
-	case "subscribe":
-		relation = "Subscriber"
-	case "block":
-		relation = "Block"
 	}
 
 	var vanity string
@@ -64,7 +63,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: INVALID_TOKEN,
+			Message: ErrorInvalidToken,
 		})
 		return
 	}
@@ -74,7 +73,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: INVALID_TOKEN,
+			Message: ErrorInvalidToken,
 		})
 		return
 	}
@@ -87,7 +86,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Unable to read body",
+			Message: ErrorUnableReadBody,
 		})
 		return
 	}
@@ -98,7 +97,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid body",
+			Message: ErrorInvalidBody,
 		})
 		return
 	}
@@ -107,7 +106,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid body: missing ID",
+			Message: ErrorInvalidBody,
 		})
 		return
 	}
@@ -118,7 +117,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		database.UserUnRelation(vanity, getbody.Id, relation)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   false,
-			Message: "OK: Deleted relation",
+			Message: OkDeletedRelation,
 		})
 	} else if err != nil || !isValid {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -131,41 +130,38 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 
 	jsonEncoder.Encode(model.RequestError{
 		Error:   false,
-		Message: "OK: Created relation",
+		Message: OkCreatedRelation,
 	})
 }
 
-// Exists handle route to know if a
+// Exists handles route to know if a relation
+// exists between two nodes
 func Exists(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
-	relation := strings.TrimPrefix(req.URL.Path, "/relation/")
-	if relation == "" || !contains([]string{"like", "subscribe", "block", "love"}, relation) {
+	relation := cases.Title(language.English, cases.Compact).String(strings.TrimPrefix(req.URL.Path, "/relation/"))
+	if relation == "" || func() bool {
+		for _, v := range []string{"Like", "Subscribe", "Block", "Love"} {
+			if v == relation {
+				return false
+			}
+		}
+		return true
+	}() {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid relation type",
+			Message: ErrorInvalidRelationType,
 		})
 		return
-	}
-
-	switch relation {
-	case "like":
-		relation = "Like"
-	case "love":
-		relation = "Love"
-	case "subscribe":
-		relation = "Subscriber"
-	case "block":
-		relation = "Block"
 	}
 
 	if req.Header.Get("Authorization") == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: INVALID_TOKEN,
+			Message: ErrorInvalidToken,
 		})
 		return
 	}
@@ -175,7 +171,7 @@ func Exists(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: INVALID_TOKEN,
+			Message: ErrorInvalidToken,
 		})
 		return
 	}
@@ -185,7 +181,7 @@ func Exists(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid query: missing target",
+			Message: ErrorInvalidQuery,
 		})
 		return
 	}
