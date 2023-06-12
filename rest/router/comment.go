@@ -54,11 +54,11 @@ func isAReply(id string) string {
 }
 
 func Handler(w http.ResponseWriter, req *http.Request) {
-	if req.Method == "GET" {
+	if req.Method == http.MethodGet {
 		get_comment(w, req)
-	} else if req.Method == "POST" {
+	} else if req.Method == http.MethodPost {
 		add_comment(w, req)
-	} else if req.Method == "DELETE" {
+	} else if req.Method == http.MethodDelete {
 		delete_comment(w, req)
 	}
 }

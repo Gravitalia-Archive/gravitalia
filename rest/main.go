@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-	"fmt"
 
 	"github.com/Gravitalia/gravitalia/database"
 	"github.com/Gravitalia/gravitalia/helpers"
@@ -23,8 +22,6 @@ func main() {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/metrics" {
 				next.ServeHTTP(w, r)
-			} else if r.Method == "OPTIONS" {
-				fmt.Fprintf(w, "OK")
 			} else {
 				start := time.Now()
 				helpers.IncrementRequests()
@@ -42,7 +39,7 @@ func main() {
 	router.HandleFunc("/callback", route.OAuth)
 	router.HandleFunc("/v1/new", route.New)
 	router.HandleFunc("/users/", route.UserHandler)
-	router.HandleFunc("/relation/", route.Relation)
+	router.HandleFunc("/relation/", route.RelationHandler)
 	router.HandleFunc("/posts/", route.Post)
 	router.HandleFunc("/comment/", route.Handler)
 	router.HandleFunc("/account/deletion", route.Delete)

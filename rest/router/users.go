@@ -12,32 +12,17 @@ import (
 	"github.com/Gravitalia/gravitalia/model"
 )
 
-// UserHandler route /users/* route into the well path
 func UserHandler(w http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/users/")
-	if id != "" && req.Method == "GET" {
+	if id != "" && req.Method == http.MethodGet {
 		Users(w, req)
-	} else if id != "" && id == "@me" && req.Method == "DELETE" {
+	} else if id != "" && id == "@me" && req.Method == http.MethodDelete {
 		Delete(w, req)
-	} else if id != "" && id == "@me" && req.Method == "PATCH" {
+	} else if id != "" && id == "@me" && req.Method == http.MethodPatch {
 		update(w, req)
 	}
 }
 
-// isBlockedAccount check if a user (id) is blocked to another one (user)
-// and respond with true if a relation (edge) exists
-// or with false if no relation exists
-func isBlockedAccount(id string, user string) (bool, error) {
-	res, err := database.MakeRequest("MATCH (a:User {name: $id})-[:Block]-(b:User {name: $to}) RETURN a;",
-		map[string]any{"id": id, "to": user})
-	if err != nil {
-		return false, err
-	}
-
-	return res != nil, nil
-}
-
-// Users is the GET route
 func Users(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
@@ -67,11 +52,10 @@ func Users(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var allow_post_access bool
-	var vanity string
 	if stats.Public {
 		allow_post_access = true
 	} else if !stats.Public && strings.TrimPrefix(req.URL.Path, "/users/") != "@me" && req.Header.Get("authorization") != "" {
-		vanity, err = helpers.CheckToken(req.Header.Get("authorization"))
+		vanity, err := helpers.CheckToken(req.Header.Get("authorization"))
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			jsonEncoder.Encode(model.RequestError{
@@ -92,22 +76,6 @@ func Users(w http.ResponseWriter, req *http.Request) {
 		}
 
 		allow_post_access = is
-	}
-
-	if strings.TrimPrefix(req.URL.Path, "/users/") != "@me" && req.Header.Get("authorization") != "" {
-		is, err := isBlockedAccount(vanity, username)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			jsonEncoder.Encode(model.RequestError{
-				Error:   true,
-				Message: "Invalid relation Block",
-			})
-			return
-		}
-
-		if is {
-			allow_post_access = true
-		}
 	}
 
 	posts := make([]model.Post, 0)

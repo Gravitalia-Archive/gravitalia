@@ -6,8 +6,9 @@ require (
 	github.com/bradfitz/gomemcache v0.0.0-20221031212613-62deef7fc822
 	github.com/cristalhq/jwt/v5 v5.1.0
 	github.com/joho/godotenv v1.5.1
-	github.com/neo4j/neo4j-go-driver/v5 v5.9.0
+	github.com/neo4j/neo4j-go-driver/v5 v5.8.1
 	github.com/prometheus/client_golang v1.15.1
+	golang.org/x/text v0.7.0
 )
 
 require (
