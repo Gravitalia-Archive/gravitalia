@@ -253,7 +253,11 @@ func IsUserSubscrirerTo(id string, user string) (bool, error) {
 		return false, err
 	}
 
-	return res != nil, nil
+	if res != nil {
+		return true, nil
+	} else {
+		return false, nil
+	}
 }
 
 // CommentPost allows to post a comment on a post
@@ -318,4 +322,14 @@ func GetReply(post_id string, id string, skip int, user string) ([]any, error) {
 	} else {
 		return nil, nil
 	}
+}
+
+// CreatePost allows to create a new post into database
+func CreatePost(id string, user string, tag string, legend string, hash string) (bool, error) {
+	_, err := MakeRequest("CREATE (:Post {id: $id, text: $text, description: null, hash: $hash}); MATCH (p:Post {id: $id}) MERGE (t:Tag {name: $tag}) CREATE (p)-[r:Show]->(t) RETURN type(r); MATCH (a:User), (b:Post) WHERE a.name = $user AND b.id = $id CREATE (a)-[r:Create]->(b) RETURN type(r);", map[string]any{"id": id, "user": user, "tag": tag, "text": legend, "hash": hash})
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
