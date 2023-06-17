@@ -13,19 +13,6 @@ import (
 	"golang.org/x/text/language"
 )
 
-const (
-	ErrorInvalidToken        = "Invalid token"
-	ErrorUnableReadBody      = "Unable to read body"
-	ErrorInvalidBody         = "Invalid body"
-	ErrorInvalidRelationType = "Invalid relation type"
-	ErrorInvalidQuery        = "Invalid query"
-)
-
-const (
-	OkCreatedRelation = "Created relation"
-	OkDeletedRelation = "Deleted relation"
-)
-
 // RelationHandler re-routes to the requested handler
 func RelationHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
@@ -53,7 +40,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: ErrorInvalidRelationType,
+			Message: ErrorInvalidRelation,
 		})
 		return
 	}
@@ -152,7 +139,7 @@ func Exists(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: ErrorInvalidRelationType,
+			Message: ErrorInvalidRelation,
 		})
 		return
 	}
