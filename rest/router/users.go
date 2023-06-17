@@ -16,9 +16,9 @@ func UserHandler(w http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/users/")
 	if id != "" && req.Method == http.MethodGet {
 		Users(w, req)
-	} else if id != "" && id == "@me" && req.Method == http.MethodDelete {
+	} else if id != "" && id == ME && req.Method == http.MethodDelete {
 		Delete(w, req)
-	} else if id != "" && id == "@me" && req.Method == http.MethodPatch {
+	} else if id != "" && id == ME && req.Method == http.MethodPatch {
 		update(w, req)
 	}
 }
@@ -28,13 +28,13 @@ func Users(w http.ResponseWriter, req *http.Request) {
 	jsonEncoder := json.NewEncoder(w)
 
 	username := strings.TrimPrefix(req.URL.Path, "/users/")
-	if username == "@me" && req.Header.Get("authorization") != "" {
-		vanity, err := helpers.CheckToken(req.Header.Get("authorization"))
+	if username == ME && req.Header.Get("Authorization") != "" {
+		vanity, err := helpers.CheckToken(req.Header.Get("Authorization"))
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: "Invalid token",
+				Message: ErrorInvalidToken,
 			})
 			return
 		}
@@ -46,36 +46,39 @@ func Users(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid user",
+			Message: ErrorInvalidUser,
 		})
 		return
+	}
+
+	var viewer_follows bool
+	if req.Header.Get("Authorization") != "" {
+		vanity, err := helpers.CheckToken(req.Header.Get("Authorization"))
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: ErrorInvalidToken,
+			})
+			return
+		}
+
+		viewer_follows, err = database.IsUserSubscrirerTo(vanity, username)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: ErrorInvalidRelation,
+			})
+			return
+		}
 	}
 
 	var allow_post_access bool
 	if stats.Public {
 		allow_post_access = true
-	} else if !stats.Public && strings.TrimPrefix(req.URL.Path, "/users/") != "@me" && req.Header.Get("authorization") != "" {
-		vanity, err := helpers.CheckToken(req.Header.Get("authorization"))
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			jsonEncoder.Encode(model.RequestError{
-				Error:   true,
-				Message: "Invalid token",
-			})
-			return
-		}
-
-		is, err := database.IsUserSubscrirerTo(vanity, username)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			jsonEncoder.Encode(model.RequestError{
-				Error:   true,
-				Message: "Invalid relation",
-			})
-			return
-		}
-
-		allow_post_access = is
+	} else if !stats.Public && strings.TrimPrefix(req.URL.Path, "/users/") != ME && req.Header.Get("Authorization") != "" {
+		allow_post_access = viewer_follows
 	}
 
 	posts := make([]model.Post, 0)
@@ -85,26 +88,28 @@ func Users(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: "Invalid user",
+				Message: ErrorInvalidUser,
 			})
 			return
 		}
 	}
 
 	jsonEncoder.Encode(struct {
-		Followers     int64        `json:"followers"`
-		Following     int64        `json:"following"`
-		Public        bool         `json:"public"`
-		Suspended     bool         `json:"suspended"`
-		CanAccessPost bool         `json:"access_post"`
-		Posts         []model.Post `json:"posts"`
+		Followers        int64        `json:"followers"`
+		Following        int64        `json:"following"`
+		Public           bool         `json:"public"`
+		Suspended        bool         `json:"suspended"`
+		CanAccessPost    bool         `json:"access_post"`
+		FollowedByViewer bool         `json:"followed_by_viewer"`
+		Posts            []model.Post `json:"posts"`
 	}{
-		Followers:     stats.Followers,
-		Following:     stats.Following,
-		Public:        stats.Public,
-		Suspended:     stats.Suspended,
-		CanAccessPost: allow_post_access,
-		Posts:         posts,
+		Followers:        stats.Followers,
+		Following:        stats.Following,
+		Public:           stats.Public,
+		Suspended:        stats.Suspended,
+		CanAccessPost:    allow_post_access,
+		FollowedByViewer: viewer_follows,
+		Posts:            posts,
 	})
 }
 
@@ -116,22 +121,22 @@ func Delete(w http.ResponseWriter, req *http.Request) {
 	vanity := ""
 	var err error
 
-	if req.Header.Get("authorization") == "" {
+	if req.Header.Get("Authorization") == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid token",
+			Message: ErrorInvalidToken,
 		})
 		return
-	} else if req.Header.Get("authorization") == os.Getenv("GLOBAL_AUTH") {
+	} else if req.Header.Get("Authorization") == os.Getenv("GLOBAL_AUTH") {
 		vanity = req.URL.Query().Get("user")
 	} else {
-		vanity, err = helpers.CheckToken(req.Header.Get("authorization"))
+		vanity, err = helpers.CheckToken(req.Header.Get("Authorization"))
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: "Invalid token",
+				Message: ErrorInvalidToken,
 			})
 			return
 		}
@@ -142,7 +147,7 @@ func Delete(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Internal server error",
+			Message: ErrorInternalServerError,
 		})
 		return
 	}
@@ -151,7 +156,7 @@ func Delete(w http.ResponseWriter, req *http.Request) {
 
 	jsonEncoder.Encode(model.RequestError{
 		Error:   false,
-		Message: "OK",
+		Message: Ok,
 	})
 }
 
@@ -160,12 +165,12 @@ func update(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
-	vanity, err := helpers.CheckToken(req.Header.Get("authorization"))
+	vanity, err := helpers.CheckToken(req.Header.Get("Authorization"))
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid token",
+			Message: ErrorInvalidToken,
 		})
 		return
 	}
@@ -177,7 +182,7 @@ func update(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Unable to get body",
+			Message: ErrorUnableReadBody,
 		})
 		return
 	}
@@ -190,7 +195,7 @@ func update(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: "OK",
+				Message: Ok,
 			})
 			return
 		}
@@ -198,6 +203,6 @@ func update(w http.ResponseWriter, req *http.Request) {
 
 	jsonEncoder.Encode(model.RequestError{
 		Error:   false,
-		Message: "OK",
+		Message: Ok,
 	})
 }
