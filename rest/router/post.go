@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/Gravitalia/gravitalia/database"
 	"github.com/Gravitalia/gravitalia/grpc"
@@ -24,7 +23,7 @@ const (
 // PostHandler re-routes to the requested handler
 func PostHandler(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/posts/")
-	if r.Method == http.MethodPost && id != NEW {
+	if r.Method == http.MethodGet && id != NEW {
 		Get(w, r)
 	} else if r.Method == http.MethodPost && id == NEW {
 		New(w, r)
@@ -115,23 +114,18 @@ func New(w http.ResponseWriter, req *http.Request) {
 	// Define channels
 	tag := make(chan string)
 	is_nude := make(chan bool)
-	wg := sync.WaitGroup{}
-	wg.Add(2)
 
 	go func() {
-		defer wg.Done()
-
 		res, _ := grpc.TagImage(0, getbody.Images[0])
 		tag <- res
 	}()
 
 	go func() {
-		defer wg.Done()
-
 		res, _ := grpc.TagImage(1, getbody.Images[0])
 		is_nude <- res == "nude"
 	}()
 
+	// Checks if content is prohibited
 	if <-is_nude {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
@@ -140,9 +134,6 @@ func New(w http.ResponseWriter, req *http.Request) {
 		})
 		return
 	}
-
-	// Wait until gRPC requests finished
-	wg.Wait()
 
 	// Publish content
 	hash, err := grpc.UploadImage(getbody.Images[0])
@@ -156,7 +147,7 @@ func New(w http.ResponseWriter, req *http.Request) {
 	}
 
 	id := helpers.Generate()
-	_, err = database.CreatePost(id, vanity, <-tag, getbody.Description, hash)
+	_, err = database.CreatePost(id, vanity, <-tag, getbody.Description, []string{hash})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
