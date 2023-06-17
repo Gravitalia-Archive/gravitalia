@@ -201,7 +201,7 @@ func GetPost(id string, user string) (model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (author:User)-[:Create]->(p:Post {id: $id}) MATCH (:User)-[l:Like]->(p) WITH author, p, count(DISTINCT l) as numLikes OPTIONAL MATCH (p)<-[:Comment]-(c:Comment)<-[:Wrote]-(u:User) OPTIONAL MATCH (c:Comment)-[love:Love]-(lover:User) WITH author, u, lover, p, numLikes, c, count(DISTINCT love) as loveComment WITH author, p, numLikes, collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user })[..20] as comments RETURN p.id, p.description, p.text, numLikes, author.name, comments;",
+			"MATCH (author:User)-[:Create]->(p:Post {id: $id}) OPTIONAL MATCH (:User)-[l:Like]->(p) WITH author, p, count(DISTINCT l) as numLikes OPTIONAL MATCH (p)<-[:Comment]-(c:Comment)<-[:Wrote]-(u:User) OPTIONAL MATCH (c:Comment)-[love:Love]-(lover:User) WITH author, u, lover, p, numLikes, c, count(DISTINCT love) as loveComment WITH author, p, numLikes, collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user })[..20] as comments RETURN p.id, p.hash, p.description, p.text, numLikes, author.name, comments;",
 			map[string]any{"id": id, "user": user})
 		if err != nil {
 			return nil, err
@@ -214,11 +214,12 @@ func GetPost(id string, user string) (model.Post, error) {
 			record := result.Record()
 
 			post.Id = record.Values[0].(string)
-			post.Description = record.Values[1].(string)
-			post.Text = record.Values[2].(string)
-			post.Like = record.Values[3].(int64)
-			post.Author = record.Values[4].(string)
-			post.Comments = record.Values[5].([]any)
+			post.Hash = record.Values[1].([]any)
+			post.Description = record.Values[2].(string)
+			post.Text = record.Values[3].(string)
+			post.Like = record.Values[4].(int64)
+			post.Author = record.Values[5].(string)
+			post.Comments = record.Values[6].([]any)
 
 			return post, nil
 		}
@@ -253,7 +254,11 @@ func IsUserSubscrirerTo(id string, user string) (bool, error) {
 		return false, err
 	}
 
-	return res != nil, nil
+	if res != nil {
+		return true, nil
+	} else {
+		return false, nil
+	}
 }
 
 // CommentPost allows to post a comment on a post
@@ -318,4 +323,14 @@ func GetReply(post_id string, id string, skip int, user string) ([]any, error) {
 	} else {
 		return nil, nil
 	}
+}
+
+// CreatePost allows to create a new post into database
+func CreatePost(id string, user string, tag string, legend string, hash []string) (bool, error) {
+	_, err := MakeRequest("CREATE (p:Post {id: $id, text: $text, description: '', hash: $hash}) WITH p MERGE (t:Tag {name: $tag}) CREATE (p)-[r:Show]->(t) WITH p MATCH (u:User) WHERE u.name = $user CREATE (u)-[r:Create]->(p) RETURN type(r);", map[string]any{"id": id, "user": user, "tag": tag, "text": legend, "hash": hash})
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
