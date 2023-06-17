@@ -3,6 +3,7 @@ package model
 // Post struct defines how post must be
 type Post struct {
 	Id          string `json:"id"`
+	Hash        []any  `json:"hash"`
 	Description string `json:"description"`
 	Text        string `json:"text"`
 	Like        int64  `json:"like"`
