@@ -1,5 +1,6 @@
 FROM golang:1.20-alpine3.18 AS build
 
+RUN useradd -u 8877 nonroot
 USER nonroot
 
 RUN mkdir /app
