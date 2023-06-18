@@ -48,3 +48,22 @@ jobs:
       run: |
             docker build . --tag ghcr.io/gravitalia/recommendation:latest
             docker push ghcr.io/gravitalia/recommendation:latest
+            
+  search:
+    name: Publish Search
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Build the Docker image
+      working-directory: ./search
+      run: |
+            docker build . --tag ghcr.io/gravitalia/search:latest
+            docker push ghcr.io/gravitalia/search:latest
