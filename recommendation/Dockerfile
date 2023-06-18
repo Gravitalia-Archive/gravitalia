@@ -8,7 +8,9 @@ WORKDIR /app
 
 RUN GOOS=linux GOARCH=amd64 go build -o recommendation
 
-FROM alpine:latest
+USER nonroot
+
+FROM alpine:3.18 as runtime
 
 COPY --from=build /app/recommendation /app/recommendation
 
