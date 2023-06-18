@@ -26,7 +26,9 @@ jobs:
         restore-keys: linux-cargo
         
     - name: Build
+      working-directory: ./search
       run: cargo build
       
     - name: Test
+      working-directory: ./search
       run: cargo test
