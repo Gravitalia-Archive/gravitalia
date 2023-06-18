@@ -22,6 +22,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Build the Docker image
+      working-directory: ./rest
       run: |
             docker build . --tag ghcr.io/gravitalia/rest:latest
             docker push ghcr.io/gravitalia/rest:latest
@@ -43,6 +44,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Build the Docker image
+      working-directory: ./recommendation
       run: |
             docker build . --tag ghcr.io/gravitalia/recommendation:latest
             docker push ghcr.io/gravitalia/recommendation:latest
