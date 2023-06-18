@@ -1,5 +1,4 @@
-FROM golang:1.20 AS build
-EXPOSE 8889
+FROM golang:1.20-alpine3.18 AS build
 
 RUN mkdir /app
 
@@ -8,4 +7,10 @@ COPY . /app
 WORKDIR /app
 
 RUN GOOS=linux GOARCH=amd64 go build -o recommendation
+
+FROM alpine:latest
+
+COPY --from=build /app/recommendation /app/recommendation
+
+EXPOSE 8889
 CMD [ "/app/recommendation" ]
