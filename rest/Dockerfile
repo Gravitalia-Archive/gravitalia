@@ -1,5 +1,4 @@
-FROM golang:1.20 AS build
-EXPOSE 8888
+FROM golang:1.20-alpine3.18 AS build
 
 RUN mkdir /app
 
@@ -7,5 +6,11 @@ COPY . /app
 
 WORKDIR /app
 
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o gravitalia
-CMD [ "/app/gravitalia" ]
+RUN GOOS=linux GOARCH=amd64 go build -o rest
+
+FROM alpine:latest
+
+COPY --from=build /app/rest /app/rest
+
+EXPOSE 8888
+CMD [ "/app/rest" ]
