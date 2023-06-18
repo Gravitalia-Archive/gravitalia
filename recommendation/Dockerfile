@@ -10,7 +10,7 @@ WORKDIR /app
 
 RUN GOOS=linux GOARCH=amd64 go build -o recommendation
 
-FROM alpine:3.18 as runtime
+FROM alpine:3.18 AS runtime
 
 USER nonroot
 
