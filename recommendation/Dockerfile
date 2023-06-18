@@ -6,7 +6,7 @@ COPY . /app
 
 WORKDIR /app
 
-RUN GOOS=linux GOARCH=amd64 go build -o recommendation
+RUN go build -o recommendation
 
 FROM alpine:3.18 AS runtime
 
