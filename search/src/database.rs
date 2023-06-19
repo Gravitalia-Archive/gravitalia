@@ -12,7 +12,7 @@ pub async fn init() -> Result<()> {
     // Connect
     let client = Client::new(
         dotenv::var("MEILISEARCH_URL").unwrap_or_else(|_| "localhost:7700".to_string()),
-        Some(dotenv::var("MEILISEARCH_URL").unwrap_or_default())
+        Some(dotenv::var("MEILISEARCH_KEY").unwrap_or_default())
     );
 
     // Create index if not exists
