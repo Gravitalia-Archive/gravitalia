@@ -31,9 +31,14 @@ func randomString(n int) string {
 
 // makeRequest allows to make requests and return the body
 func makeRequest(url string, method string, reqBody io.Reader, authHeader string) ([]byte, error) {
+	fmt.Println(url)
+	fmt.Println(method)
+	fmt.Println(authHeader)
 	req, err := http.NewRequest(method, url, reqBody)
 	if err != nil {
-		return nil, errors.New("unable to make request")
+		fmt.Println("1")
+		fmt.Println(err)
+		return nil, errors.New("unable to create request")
 	}
 
 	if authHeader != "" {
@@ -42,6 +47,8 @@ func makeRequest(url string, method string, reqBody io.Reader, authHeader string
 
 	response, err := client.Do(req)
 	if err != nil {
+		fmt.Println("2")
+		fmt.Println(err)
 		return nil, errors.New("unable to make request")
 	}
 	defer response.Body.Close()
