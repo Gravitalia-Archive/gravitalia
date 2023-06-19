@@ -11,8 +11,6 @@ RUN cargo build --release \
  && rm src/*.rs
 
 COPY ./src ./src
-COPY ./proto ./proto
-COPY ./build.rs ./build.rs
 
 RUN rm ./target/release/deps/search* \
  && cargo build --release
