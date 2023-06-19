@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
@@ -31,13 +30,8 @@ func randomString(n int) string {
 
 // makeRequest allows to make requests and return the body
 func makeRequest(url string, method string, reqBody io.Reader, authHeader string) ([]byte, error) {
-	fmt.Println(url)
-	fmt.Println(method)
-	fmt.Println(authHeader)
 	req, err := http.NewRequest(method, url, reqBody)
 	if err != nil {
-		fmt.Println("1")
-		fmt.Println(err)
 		return nil, errors.New("unable to create request")
 	}
 
@@ -47,8 +41,6 @@ func makeRequest(url string, method string, reqBody io.Reader, authHeader string
 
 	response, err := client.Do(req)
 	if err != nil {
-		fmt.Println("2")
-		fmt.Println(err)
 		return nil, errors.New("unable to make request")
 	}
 	defer response.Body.Close()
@@ -139,20 +131,13 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 
 			database.CreateUser(user.Vanity)
 
-			fmt.Println(os.Getenv("GLOBAL_AUTH"))
-
 			// Add user into document in case of search
 			documentUser, _ := json.Marshal(struct {
 				Vanity string `json:"vanity"`
 			}{
 				Vanity: user.Vanity,
 			})
-			b, err := makeRequest(os.Getenv("SEARCH_API")+"/search/add", "POST", bytes.NewBuffer(documentUser), os.Getenv("GLOBAL_AUTH"))
-			if err != nil {
-				fmt.Println(err)
-			}
-
-			fmt.Println(string(b))
+			go makeRequest(os.Getenv("SEARCH_API")+"/search/add", "POST", bytes.NewBuffer(documentUser), os.Getenv("GLOBAL_AUTH"))
 
 			http.Redirect(w, req, "https://www.gravitalia.com/callback?token="+data.Message, http.StatusTemporaryRedirect)
 		}
