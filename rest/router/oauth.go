@@ -137,7 +137,7 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 			}{
 				Vanity: user.Vanity,
 			})
-			go makeRequest(os.Getenv("SEARCH_API")+"/search/add", "POST", bytes.NewBuffer(documentUser), os.Getenv("GLOBAL_AUTH"))
+			makeRequest(os.Getenv("SEARCH_API")+"/search/add", "POST", bytes.NewBuffer(documentUser), os.Getenv("GLOBAL_AUTH"))
 
 			http.Redirect(w, req, "https://www.gravitalia.com/callback?token="+data.Message, http.StatusTemporaryRedirect)
 		}
