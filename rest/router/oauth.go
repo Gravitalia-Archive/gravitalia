@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
@@ -131,13 +132,20 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 
 			database.CreateUser(user.Vanity)
 
+			fmt.Println(os.Getenv("GLOBAL_AUTH"))
+
 			// Add user into document in case of search
 			documentUser, _ := json.Marshal(struct {
 				Vanity string `json:"vanity"`
 			}{
 				Vanity: user.Vanity,
 			})
-			makeRequest(os.Getenv("SEARCH_API")+"/search/add", "POST", bytes.NewBuffer(documentUser), os.Getenv("GLOBAL_AUTH"))
+			b, err := makeRequest(os.Getenv("SEARCH_API")+"/search/add", "POST", bytes.NewBuffer(documentUser), os.Getenv("GLOBAL_AUTH"))
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			fmt.Println(string(b))
 
 			http.Redirect(w, req, "https://www.gravitalia.com/callback?token="+data.Message, http.StatusTemporaryRedirect)
 		}
