@@ -1,7 +1,8 @@
-
+use meilisearch_sdk::search::SearchResults;
 use meilisearch_sdk::indexes::Index;
 use meilisearch_sdk::client::*;
 use once_cell::sync::OnceCell;
+use crate::model::User;
 use anyhow::Result;
 
 static INDEX: OnceCell<Index> = OnceCell::new();
@@ -24,9 +25,29 @@ pub async fn init() -> Result<()> {
 }
 
 /// Allows to add a document into the index
-pub async fn add_document(document: crate::model::User) -> Result<()> {
+pub async fn add_document(document: User) -> Result<()> {
     // Add document
     INDEX.get().unwrap().add_or_replace(&[document], Some("vanity")).await?;
 
     Ok(())
+}
+
+/// Allows to delete a document into the index
+pub async fn delete_document(id: String) -> Result<()> {
+    // Add document
+    INDEX.get().unwrap().delete_document(id).await?;
+
+    Ok(())
+}
+
+// Search into all documents
+pub async fn search(query: String) -> Result<SearchResults<User>> {
+    Ok(
+        INDEX.get().unwrap()
+        .search()
+        .with_query(&query)
+        .with_limit(3)
+        .execute::<User>()
+        .await?
+    )
 }

@@ -47,7 +47,8 @@ async fn main() {
     database::init().await.unwrap();
 
     // Create routes
-    let routes = warp::path("add")
+    let routes = warp::path("search")
+                    .and(warp::path("add"))
                     .and(warp::post())
                     .and(warp::body::json())
                     .and(warp::header("authorization"))
@@ -61,6 +62,39 @@ async fn main() {
                             }
                         }
                     })
+                .or(
+                    warp::path("search")
+                    .and(warp::path("delete"))
+                    .and(warp::delete())
+                    .and(warp::body::json())
+                    .and(warp::header("authorization"))
+                    .and_then(|body: model::User, token: String| async move {
+                        match router::del::delete(body, token).await {
+                            Ok(r) => {
+                                Ok(r)
+                            },
+                            Err(_) => {
+                                Err(warp::reject::custom(UnknownError))
+                            }
+                        }
+                    })
+                )
+                .or(
+                    warp::path("search")
+                    .and(warp::path("research"))
+                    .and(warp::get())
+                    .and(warp::query::<String>())
+                    .and_then(|query: String| async move {
+                        match router::research::research(query).await {
+                            Ok(r) => {
+                                Ok(r)
+                            },
+                            Err(_) => {
+                                Err(warp::reject::custom(UnknownError))
+                            }
+                        }
+                    })
+                )
                 .recover(handle_rejection);
 
     // Set port or use default

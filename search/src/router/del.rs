@@ -3,7 +3,7 @@ use anyhow::Result;
 use crate::model;
 
 /// This route allows to create a new document
-pub async fn add(body: model::User, authorization: String) -> Result<WithStatus<Json>> {
+pub async fn delete(body: model::User, authorization: String) -> Result<WithStatus<Json>> {
     // Check if token is valid
     if authorization != dotenv::var("GLOBAL_AUTH")? {
         return Ok(warp::reply::with_status(warp::reply::json(
@@ -15,10 +15,10 @@ pub async fn add(body: model::User, authorization: String) -> Result<WithStatus<
         StatusCode::UNAUTHORIZED))
     }
 
-    crate::database::add_document(body).await?;
+    crate::database::delete_document(body.vanity).await?;
 
     Ok(warp::reply::with_status(warp::reply::json(&model::Error {
         error: false,
-        message: "Indexed".to_string(),
-    }), StatusCode::CREATED))
+        message: "Deleted".to_string(),
+    }), StatusCode::OK))
 }

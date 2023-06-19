@@ -10,5 +10,5 @@ pub struct Error {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
-    vanity: String
+    pub vanity: String
 }
