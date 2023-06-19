@@ -20,5 +20,5 @@ pub async fn add(body: model::User, authorization: String) -> Result<WithStatus<
     Ok(warp::reply::with_status(warp::reply::json(&model::Error {
         error: false,
         message: "Indexed".to_string(),
-    }), StatusCode::OK))
+    }), StatusCode::CREATED))
 }
