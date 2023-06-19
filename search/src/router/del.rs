@@ -15,7 +15,12 @@ pub async fn delete(body: model::User, authorization: String) -> Result<WithStat
         StatusCode::UNAUTHORIZED))
     }
 
-    crate::database::delete_document(body.vanity).await?;
+    match crate::database::delete_document(body.vanity).await {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("Deleting error: {}", e);
+        }
+    }
 
     Ok(warp::reply::with_status(warp::reply::json(&model::Error {
         error: false,

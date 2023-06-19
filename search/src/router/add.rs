@@ -15,7 +15,12 @@ pub async fn add(body: model::User, authorization: String) -> Result<WithStatus<
         StatusCode::UNAUTHORIZED))
     }
 
-    crate::database::add_document(body).await?;
+    match crate::database::add_document(body).await {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("Adding error: {}", e);
+        }
+    }
 
     Ok(warp::reply::with_status(warp::reply::json(&model::Error {
         error: false,
