@@ -12,3 +12,8 @@ pub struct Error {
 pub struct User {
     pub vanity: String
 }
+
+#[derive(Deserialize)]
+pub struct QuerySearch {
+    pub q: String
+}
