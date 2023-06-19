@@ -11,21 +11,6 @@ pub async fn research(query: String) -> Result<WithStatus<Json>> {
         }), StatusCode::BAD_REQUEST));
     }
 
-    println!("{:?}", database::search(query.clone()).await?.hits);
-
-    println!("{:?}", database::search(query.clone())
-    .await?
-    .hits
-    .into_iter()
-    .map(|u| u.result.vanity));
-
-    println!("{:?}", database::search(query.clone())
-    .await?
-    .hits
-    .into_iter()
-    .map(|u| u.result.vanity)
-    .collect::<String>());
-
     Ok(warp::reply::with_status(
         warp::reply::json(
             &database::search(query)
@@ -33,7 +18,7 @@ pub async fn research(query: String) -> Result<WithStatus<Json>> {
                 .hits
                 .into_iter()
                 .map(|u| u.result.vanity)
-                .collect::<String>()
+                .collect::<Vec<String>>()
         ), StatusCode::OK
     ))
 }
