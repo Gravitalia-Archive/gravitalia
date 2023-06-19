@@ -83,9 +83,9 @@ async fn main() {
                     warp::path("search")
                     .and(warp::path("research"))
                     .and(warp::get())
-                    .and(warp::query::<String>())
-                    .and_then(|query: String| async move {
-                        match router::research::research(query).await {
+                    .and(warp::query::<model::QuerySearch>())
+                    .and_then(|query: model::QuerySearch| async move {
+                        match router::research::research(query.q).await {
                             Ok(r) => {
                                 Ok(r)
                             },
