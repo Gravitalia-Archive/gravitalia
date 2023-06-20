@@ -1,23 +1,21 @@
-FROM rust:1.70 as build
+FROM rust:alpine3.18 AS builder
 
 RUN USER=root cargo new --bin search
 WORKDIR /search
 
-COPY ./Cargo.toml ./Cargo.toml
+ENV     RUSTFLAGS="-C target-feature=-crt-static"
+RUN     apk add -q --update-cache --no-cache build-base openssl-dev musl
 
-RUN apt-get update && apt-get install -y --no-install-recommends libssl-dev pkg-config
+COPY    . .
+RUN    cargo build --release
 
-RUN cargo build --release \
- && rm src/*.rs
+FROM alpine:3.18 AS runtime
 
-COPY ./src ./src
+RUN apk update \
+ && apk add --no-cache libssl1.1 musl-dev libgcc tini curl
 
-RUN rm ./target/release/deps/search* \
- && cargo build --release
+COPY --from=builder /search/target/release/search /bin/search
 
-FROM rust:1.70-slim-buster
-
-COPY --from=build /search/target/release/search .
-
-EXPOSE 8890
-CMD ["./search"]
+EXPOSE 8890/tcp
+ENTRYPOINT ["tini", "--"]
+CMD     /bin/search
