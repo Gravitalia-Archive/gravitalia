@@ -97,7 +97,7 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User {name: $id})-[:Create]->(p:Post) OPTIONAL MATCH (p)<-[l:Like]-(liker:User) RETURN p.id as id, p.description, p.text, count(DISTINCT l) ORDER BY id SKIP 0 LIMIT 12;",
+			"MATCH (u:User {name: $id})-[:Create]->(p:Post) OPTIONAL MATCH (p)<-[l:Like]-(liker:User) RETURN p.id as id, p.hash, p.description, p.text, count(DISTINCT l) ORDER BY id SKIP 0 LIMIT 12;",
 			map[string]any{"id": id, "skip": skip * 12})
 		if err != nil {
 			return nil, err
@@ -113,9 +113,10 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 			list = append(list, model.Post{})
 
 			list[pos].Id = record.Values[0].(string)
-			list[pos].Description = record.Values[1].(string)
-			list[pos].Text = record.Values[2].(string)
-			list[pos].Like = record.Values[3].(int64)
+			list[pos].Hash = record.Values[1].([]any)
+			list[pos].Description = record.Values[2].(string)
+			list[pos].Text = record.Values[3].(string)
+			list[pos].Like = record.Values[4].(int64)
 
 			pos++
 		}
