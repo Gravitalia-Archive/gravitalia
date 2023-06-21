@@ -139,7 +139,7 @@ func New(w http.ResponseWriter, req *http.Request) {
 	// Publish content
 	hash, err := grpc.UploadImage(getbody.Images[0])
 	if err != nil {
-		log.Error(err)
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
