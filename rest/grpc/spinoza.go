@@ -30,7 +30,7 @@ func UploadImage(image []byte) (string, error) {
 	// Make request
 	r, err := c.Upload(ctx, &proto.UploadRequest{
 		Data:  image,
-		Width: 3840, // 1920 for FHD
+		//Width: 3840, // 1920 for FHD
 	})
 
 	if err != nil {
