@@ -4,4 +4,5 @@ package model
 type AuthaUser struct {
 	Username string `json:"username"`
 	Vanity   string `json:"vanity"`
+	Flags	 int 	`json:"flags"`
 }

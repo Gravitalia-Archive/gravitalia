@@ -133,9 +133,13 @@ func OAuth(w http.ResponseWriter, req *http.Request) {
 
 			// Add user into document in case of search
 			documentUser, _ := json.Marshal(struct {
-				Vanity string `json:"vanity"`
+				Vanity 	 string `json:"vanity"`
+				Username string `json:"username"`
+				Flags	 int	`json:"flags"`
 			}{
-				Vanity: user.Vanity,
+				Vanity:   user.Vanity,
+				Username: user.Username,
+				Flags:	  user.Flags,
 			})
 			go makeRequest(os.Getenv("SEARCH_API")+"/search/add", "POST", bytes.NewBuffer(documentUser), os.Getenv("GLOBAL_AUTH"))
 
