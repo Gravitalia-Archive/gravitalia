@@ -106,6 +106,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 			Error:   false,
 			Message: OkDeletedRelation,
 		})
+		return
 	} else if err != nil || !isValid {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
