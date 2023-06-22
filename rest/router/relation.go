@@ -30,7 +30,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 
 	relation := cases.Title(language.English, cases.Compact).String(strings.TrimPrefix(req.URL.Path, "/relation/"))
 	if relation == "" || func() bool {
-		for _, v := range []string{"Like", "Subscribe", "Block", "Love"} {
+		for _, v := range []string{"Like", "Subscriber", "Block", "Love"} {
 			if v == relation {
 				return false
 			}
@@ -130,7 +130,7 @@ func Exists(w http.ResponseWriter, req *http.Request) {
 
 	relation := cases.Title(language.English, cases.Compact).String(strings.TrimPrefix(req.URL.Path, "/relation/"))
 	if relation == "" || func() bool {
-		for _, v := range []string{"Like", "Subscribe", "Block", "Love"} {
+		for _, v := range []string{"Like", "Subscriber", "Block", "Love"} {
 			if v == relation {
 				return false
 			}
