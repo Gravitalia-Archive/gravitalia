@@ -5,12 +5,14 @@ use serde::{Serialize, Deserialize};
 #[derive(Serialize)]
 pub struct Error {
     pub error: bool,
-    pub message: String,
+    pub message: String
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
-    pub vanity: String
+    pub vanity: String,
+    username: String,
+    flags: u8
 }
 
 #[derive(Deserialize)]
