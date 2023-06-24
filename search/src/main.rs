@@ -95,6 +95,22 @@ async fn main() {
                         }
                     })
                 )
+                .or(
+                    warp::path("search")
+                    .and(warp::path("research"))
+                    .and(warp::get())
+                    .and(warp::header("authorization"))
+                    .and_then(|token: String| async move {
+                        match router::all::users(token).await {
+                            Ok(r) => {
+                                Ok(r)
+                            },
+                            Err(_) => {
+                                Err(warp::reject::custom(UnknownError))
+                            }
+                        }
+                    })
+                )
                 .recover(handle_rejection);
 
     // Set port or use default
