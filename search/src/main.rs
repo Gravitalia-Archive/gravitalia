@@ -97,7 +97,7 @@ async fn main() {
                 )
                 .or(
                     warp::path("search")
-                    .and(warp::path("research"))
+                    .and(warp::path("all_users"))
                     .and(warp::get())
                     .and(warp::header("authorization"))
                     .and_then(|token: String| async move {
