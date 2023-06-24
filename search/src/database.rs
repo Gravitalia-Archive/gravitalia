@@ -51,3 +51,14 @@ pub async fn search(query: String) -> Result<SearchResults<User>> {
         .await?
     )
 }
+
+// Get every documents in index
+pub async fn get_all() -> Result<SearchResults<User>> {
+    Ok(
+        INDEX.get().unwrap()
+        .search()
+        .with_query("*")
+        .execute::<User>()
+        .await?
+    )
+}
