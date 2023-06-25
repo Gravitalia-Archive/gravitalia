@@ -174,15 +174,7 @@ func Exists(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	isValid, err := database.UserRelation(vanity, target, relation)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: err.Error(),
-		})
-		return
-	}
+	isValid, _ := database.UserRelation(vanity, target, relation)
 
 	existence := "non-existent"
 	if isValid {
