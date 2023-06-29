@@ -55,8 +55,7 @@ func main() {
 
 	// Create routes
 	router := http.NewServeMux()
-	router.HandleFunc("/", route.Index)
-	router.HandleFunc("/recommendation/for_you_feed", route.Get)
+	router.HandleFunc("/recommendation/for_you_feed", route.Handler)
 	router.Handle("/metrics", promhttp.HandlerFor(helpers.GetRegistery(), promhttp.HandlerOpts{}))
 
 	log.Println("Server is starting on port", os.Getenv("RECOMMENDATION_PORT"))
