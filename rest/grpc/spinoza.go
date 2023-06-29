@@ -23,13 +23,13 @@ func UploadImage(image []byte) (string, error) {
 	c := proto.NewSpinozaClient(conn)
 
 	// Contact the server and print out its response
-	// If no response in 5 seconds, cancel it
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	// If no response in 20 seconds, cancel it
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
 	defer cancel()
 
 	// Make request
 	r, err := c.Upload(ctx, &proto.UploadRequest{
-		Data:  image,
+		Data: image,
 		//Width: 3840, // 1920 for FHD
 	})
 
