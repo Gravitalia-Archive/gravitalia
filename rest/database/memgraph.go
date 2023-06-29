@@ -23,6 +23,11 @@ func Init() {
 	driver, _ := neo4j.NewDriverWithContext(os.Getenv("GRAPH_URL"), neo4j.BasicAuth(os.Getenv("GRAPH_USERNAME"), os.Getenv("GRAPH_PASSWORD"), ""))
 	Session = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	Mem = memcache.New(os.Getenv("MEM_URL"))
+
+	MakeRequest("CREATE CONSTRAINT ON (u:User) ASSERT u.name IS UNIQUE;", map[string]any{})
+	MakeRequest("CREATE CONSTRAINT ON (p:Post) ASSERT p.id IS UNIQUE;", map[string]any{})
+	MakeRequest("CREATE CONSTRAINT ON (t:Tag) ASSERT t.name IS UNIQUE;", map[string]any{})
+	MakeRequest("CREATE CONSTRAINT ON (c:Comment) ASSERT c.id IS UNIQUE;", map[string]any{})
 }
 
 // MakeRequest is a simple way to send a query
@@ -284,16 +289,6 @@ func CommentReply(id string, user string, content string, original_comment strin
 	}
 
 	return comment_id, nil
-}
-
-// DeleteComment allows to remove a comment on a post
-func DeleteComment(id string, user string) (bool, error) {
-	_, err := MakeRequest("MATCH (r:Comment)-[:Reply]-(c:Comment {id: $to})<-[:Wrote]-(u:User {name: $id}) DETACH DELETE r, c;", map[string]any{"id": user, "to": id})
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
 }
 
 // GetComments sends 20 comments of a post

@@ -174,11 +174,37 @@ func Exists(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	isValid, _ := database.UserRelation(vanity, target, relation)
+	var content string
+	switch relation {
+	case "Subscriber", "Block":
+		content = "User"
+	case "Like", "View":
+		content = "Post"
+	case "Love":
+		content = "Comment"
+	}
 
-	existence := "non-existent"
-	if isValid {
+	var identifier string
+	if content == "User" {
+		identifier = "name"
+	} else {
+		identifier = "id"
+	}
+
+	var existence string
+	res, err := database.MakeRequest("MATCH (a:User {name: $id})-[:"+relation+"]->(b:"+content+"{"+identifier+": $to}) RETURN a;",
+		map[string]any{"id": vanity, "to": target})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorWithDatabase,
+		})
+		return
+	} else if res != nil {
 		existence = "existent"
+	} else if res == nil {
+		existence = "non-existent"
 	}
 
 	jsonEncoder.Encode(model.RequestError{
