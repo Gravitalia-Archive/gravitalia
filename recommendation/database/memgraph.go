@@ -162,7 +162,7 @@ func JaccardRank(id string, idList []string) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User {name: $id})-[:Like]->(p:Post) WITH u, p LIMIT 10 MATCH (l:Post) WHERE l.id IN $list AND NOT EXISTS((u)-[:View]->(l)) WITH l, p ORDER BY p.id DESC WITH collect(l) as posts, collect(p) as likedPosts CALL node_similarity.jaccard_pairwise(posts, likedPosts) YIELD node1, node2, similarity WITH node1, similarity ORDER BY similarity DESC LIMIT 15 OPTIONAL MATCH (a:User)-[:Like]->(node1) WITH node1, count(DISTINCT a) as numLikes MATCH (creator:User)-[:Create]-(node1) WITH node1, numLikes, creator RETURN node1.id, node1.text, node1.description, numLikes, node1.hash, creator.name;",
+			"MATCH (u:User {name: $id})-[:Like]->(p:Post) WITH u, p LIMIT 10 MATCH (l:Post) WHERE l.id IN $list AND NOT EXISTS((u)-[:View]->(l)) WITH l, p ORDER BY p.id DESC WITH collect(l) as posts, collect(p) as likedPosts CALL node_similarity.jaccard_pairwise(posts, likedPosts) YIELD node1, node2, similarity WITH node1, similarity ORDER BY similarity DESC LIMIT 15 OPTIONAL MATCH (a:User)-[:Like]->(node1) WITH node1, count(DISTINCT a) as numLikes MATCH (creator:User)-[:Create]-(node1) WITH node1, numLikes, creator OPTIONAL MATCH (:User {name: $id})-[r:Like]-(node1) RETURN node1.id, node1.text, node1.description, numLikes, node1.hash, creator.name, CASE WHEN r IS NULL THEN false ELSE true END;",
 			map[string]any{"id": id, "list": idList})
 		if err != nil {
 			return nil, err
@@ -181,6 +181,8 @@ func JaccardRank(id string, idList []string) ([]model.Post, error) {
 			list[pos].Text = record.Values[1].(string)
 			list[pos].Description = record.Values[2].(string)
 			list[pos].Like = record.Values[3].(int64)
+			list[pos].Hash = record.Values[4].([]any)
+			list[pos].Author = record.Values[5].(string)
 
 			pos++
 		}
