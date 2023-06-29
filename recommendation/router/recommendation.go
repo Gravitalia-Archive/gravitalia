@@ -80,6 +80,7 @@ func recommendationGet(w http.ResponseWriter, req *http.Request) {
 	posts = append(posts, followingPost...)
 	posts = append(posts, communityPost...)
 
+	// Remove duplicates
 	posts = helpers.RemoveDuplicates(posts)
 
 	var ids []string
@@ -89,6 +90,8 @@ func recommendationGet(w http.ResponseWriter, req *http.Request) {
 	}
 
 	posts, _ = database.JaccardRank(vanity, ids)
+	// Remove duplicates
+	posts = helpers.RemoveDuplicates(posts)
 
 	jsonEncoder.Encode(posts)
 }
