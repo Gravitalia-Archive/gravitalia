@@ -9,6 +9,8 @@ const ME = "@me"
 
 // Every possible error list
 const (
+	ErrorInvalidPost         = "Invalid post"
+	ErrorInvalidPostAccess   = "No access to this post"
 	ErrorInternalServerError = "Internal server error"
 	ErrorInvalidToken        = "Invalid token"
 	ErrorUnableReadBody      = "Unable to read body"
