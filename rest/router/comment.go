@@ -75,7 +75,7 @@ func get_comment(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid post",
+			Message: ErrorInvalidPost,
 		})
 		return
 	}
@@ -85,7 +85,7 @@ func get_comment(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid user",
+			Message: ErrorInvalidUser,
 		})
 		return
 	}
@@ -99,7 +99,7 @@ func get_comment(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: "Invalid relation",
+				Message: ErrorInvalidRelation,
 			})
 			return
 		}
@@ -111,7 +111,7 @@ func get_comment(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "You don't have access to this post",
+			Message: ErrorInvalidPostAccess,
 		})
 		return
 	}
@@ -129,7 +129,7 @@ func get_comment(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: "Cannot get replies",
+				Message: ErrorWithDatabase,
 			})
 			return
 		}
@@ -139,7 +139,7 @@ func get_comment(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: "Cannot get comments",
+				Message: ErrorWithDatabase,
 			})
 			return
 		}
@@ -161,7 +161,7 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid token",
+			Message: ErrorInvalidToken,
 		})
 		return
 	}
@@ -173,7 +173,7 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Unable to get body",
+			Message: ErrorUnableReadBody,
 		})
 		return
 	}
@@ -181,11 +181,11 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 	var getbody model.AddBody
 	json.Unmarshal(body, &getbody)
 
-	if getbody.Content == "" {
+	if strings.TrimSpace(getbody.Content) == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid body: missing content field",
+			Message: ErrorInvalidBody,
 		})
 		return
 	}
@@ -196,7 +196,7 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid post",
+			Message: ErrorInvalidPost,
 		})
 		return
 	}
@@ -206,7 +206,7 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid user",
+			Message: ErrorInvalidUser,
 		})
 		return
 	}
@@ -220,7 +220,7 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: "Invalid relation",
+				Message: ErrorInvalidRelation,
 			})
 			return
 		}
@@ -232,7 +232,7 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "You don't have access to this post",
+			Message: ErrorInvalidPostAccess,
 		})
 		return
 	}
@@ -244,7 +244,7 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: "Error while posting comment, double check body",
+				Message: ErrorInvalidBody,
 			})
 			return
 		}
@@ -265,7 +265,7 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 				jsonEncoder.Encode(model.RequestError{
 					Error:   true,
-					Message: "Error while posting comment, double check body",
+					Message: ErrorInvalidBody,
 				})
 				return
 			}
@@ -275,7 +275,7 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 				jsonEncoder.Encode(model.RequestError{
 					Error:   true,
-					Message: "Error while posting comment, double check body",
+					Message: ErrorInvalidBody,
 				})
 				return
 			}
@@ -297,17 +297,25 @@ func delete_comment(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid token",
+			Message: ErrorInvalidToken,
 		})
 		return
 	}
 
 	id := strings.TrimPrefix(req.URL.Path, "/comment/")
 
-	database.DeleteComment(id, vanity)
+	_, err := database.MakeRequest("MATCH (c:Comment {id: $to})<-[:Wrote]-(u:User {name: $id}) OPTIONAL MATCH (r:Comment)-[:Reply]-(c) WITH c, r DETACH DELETE r, c;", map[string]any{"id": vanity, "to": id})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorWithDatabase,
+		})
+		return
+	}
 
 	jsonEncoder.Encode(model.RequestError{
 		Error:   false,
-		Message: "Deleted comment",
+		Message: Ok,
 	})
 }
