@@ -11,7 +11,6 @@ import (
 	"github.com/Gravitalia/recommendation/helpers"
 	route "github.com/Gravitalia/recommendation/router"
 	"github.com/joho/godotenv"
-	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/robfig/cron/v3"
 )
@@ -19,9 +18,6 @@ import (
 func main() {
 	// Get key-value in .env file
 	godotenv.Load()
-
-	// Set port as variable
-	port := os.Getenv("RECOMMENDATION_PORT")
 
 	// Start a new cron job
 	c := cron.New()
@@ -57,34 +53,25 @@ func main() {
 		})
 	}
 
-	// Create a Zipkin middleware
-	tracer, err := helpers.NewTracer(port)
-	if err != nil {
-		log.Panicf("Cannot create a Zipkin tracer")
-	}
-
-	zippkinMiddleware := zipkinhttp.NewServerMiddleware(
-		tracer, zipkinhttp.TagResponseSize(true),
-	)
-
 	// Create routes
 	router := http.NewServeMux()
 	router.HandleFunc("/", route.Index)
-	router.HandleFunc("/recommendation/for_you_feed", route.Handler)
+	router.HandleFunc("/recommendation/for_you_feed", route.Get)
 	router.Handle("/metrics", promhttp.HandlerFor(helpers.GetRegistery(), promhttp.HandlerOpts{}))
 
-	log.Println("Server is starting on port", port)
+	log.Println("Server is starting on port", os.Getenv("RECOMMENDATION_PORT"))
 
 	// Create web server
 	server := &http.Server{
-		Addr:              ":" + port,
+		Addr:              ":" + os.Getenv("RECOMMENDATION_PORT"),
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 	server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		zippkinMiddleware(middleware(router)).ServeHTTP(w, r)
+		middleware(router).ServeHTTP(w, r)
 	})
 
-	if err = server.ListenAndServe(); err != nil {
+	err := server.ListenAndServe()
+	if err != nil {
 		panic(err)
 	}
 }
