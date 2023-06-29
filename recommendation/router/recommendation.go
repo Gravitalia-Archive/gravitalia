@@ -29,16 +29,16 @@ func recommendationGet(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid token",
+			Message: ErrorInvalidToken,
 		})
 		return
 	} else {
-		data, err := helpers.CheckToken(req.Header.Get("authorization"))
+		data, err := helpers.Check(req.Header.Get("authorization"))
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: "Invalid token",
+				Message: ErrorInvalidToken,
 			})
 			return
 		}
@@ -50,7 +50,7 @@ func recommendationGet(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Cannot get the latest posts from the most recently liked post tag",
+			Message: ErrorGetLatestLikedPost,
 		})
 		return
 	}
@@ -60,7 +60,7 @@ func recommendationGet(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Cannot get last following posts",
+			Message: ErrorGetLatestFollowing,
 		})
 		return
 	}
@@ -70,7 +70,7 @@ func recommendationGet(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Cannot get last community posts",
+			Message: ErrorGetLatestCommunity,
 		})
 		return
 	}
