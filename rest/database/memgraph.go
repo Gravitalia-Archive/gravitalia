@@ -239,17 +239,6 @@ func GetPost(id string, user string) (model.Post, error) {
 	return post, nil
 }
 
-// DeleteUser allows to remove every relations, posts, comments and user
-func DeleteUser(vanity string) (bool, error) {
-	_, err := MakeRequest("MATCH (u:User {name: $id})-[:Create]->(p:Post) DETACH DELETE p WITH u MATCH (u)-[:Commented]->(c:Comment) DETACH DELETE c WITH u MATCH (u)-[r]->() DELETE r WITH u DETACH DELETE u;",
-		map[string]any{"id": vanity})
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
 // IsUserSubscrirerTo check if a user (id) is subscrired to another one (user)
 // and respond with true if a relation (edge) exists
 // or with false if no relation exists
