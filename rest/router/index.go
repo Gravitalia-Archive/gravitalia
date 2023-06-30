@@ -9,15 +9,16 @@ const ME = "@me"
 
 // Every possible error list
 const (
-	ErrorInvalidPost         = "Invalid post"
-	ErrorInvalidPostAccess   = "No access to this post"
-	ErrorInternalServerError = "Internal server error"
-	ErrorInvalidToken        = "Invalid token"
-	ErrorUnableReadBody      = "Unable to read body"
-	ErrorInvalidBody         = "Invalid body"
-	ErrorInvalidRelation     = "Invalid relation"
-	ErrorInvalidQuery        = "Invalid query"
-	ErrorInvalidUser         = "Invalid user"
+	ErrorExceededMaximumImages = "Maximum images exceeded"
+	ErrorInvalidPost           = "Invalid post"
+	ErrorInvalidPostAccess     = "No access to this post"
+	ErrorInternalServerError   = "Internal server error"
+	ErrorInvalidToken          = "Invalid token"
+	ErrorUnableReadBody        = "Unable to read body"
+	ErrorInvalidBody           = "Invalid body"
+	ErrorInvalidRelation       = "Invalid relation"
+	ErrorInvalidQuery          = "Invalid query"
+	ErrorInvalidUser           = "Invalid user"
 )
 
 // Every OK message reponse
