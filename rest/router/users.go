@@ -12,10 +12,11 @@ import (
 	"github.com/Gravitalia/gravitalia/model"
 )
 
+// UserHandler routes to the right function
 func UserHandler(w http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/users/")
 	if id != "" && req.Method == http.MethodGet {
-		Users(w, req)
+		GetUser(w, req)
 	} else if id != "" && id == ME && req.Method == http.MethodDelete {
 		Delete(w, req)
 	} else if id != "" && id == ME && req.Method == http.MethodPatch {
@@ -23,13 +24,20 @@ func UserHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func Users(w http.ResponseWriter, req *http.Request) {
+// GetUser allows getting user data such as posts
+func GetUser(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
-	username := strings.TrimPrefix(req.URL.Path, "/users/")
-	if username == ME && req.Header.Get("Authorization") != "" {
-		vanity, err := helpers.CheckToken(req.Header.Get("Authorization"))
+	var me string
+	id := strings.TrimPrefix(req.URL.Path, "/users/")
+	username := id
+
+	authHeader := req.Header.Get("Authorization")
+
+	// Check actual user
+	if username == ME && authHeader != "" {
+		vanity, err := helpers.CheckToken(authHeader)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			jsonEncoder.Encode(model.RequestError{
@@ -39,8 +47,10 @@ func Users(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		username = vanity
+		me = vanity
 	}
 
+	// Get user profile
 	stats, err := database.GetProfile(username)
 	if err != nil || stats.Suspended {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -51,19 +61,10 @@ func Users(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var viewer_follows bool
-	if req.Header.Get("Authorization") != "" {
-		vanity, err := helpers.CheckToken(req.Header.Get("Authorization"))
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			jsonEncoder.Encode(model.RequestError{
-				Error:   true,
-				Message: ErrorInvalidToken,
-			})
-			return
-		}
-
-		viewer_follows, err = database.IsUserSubscrirerTo(vanity, username)
+	// Check if viewer is following user
+	var viewerFollows bool
+	if authHeader != "" {
+		viewerFollows, err = database.IsUserSubscrirerTo(me, username)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
@@ -74,15 +75,11 @@ func Users(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	var allow_post_access bool
-	if stats.Public {
-		allow_post_access = true
-	} else if !stats.Public && strings.TrimPrefix(req.URL.Path, "/users/") != ME && req.Header.Get("Authorization") != "" {
-		allow_post_access = viewer_follows
-	}
+	// Check if viewer have access to the user's post
+	allowPostAccess := stats.Public || (authHeader != "" && id != ME && me != "" && id != me && viewerFollows)
 
 	posts := make([]model.Post, 0)
-	if allow_post_access {
+	if allowPostAccess {
 		posts, err = database.GetUserPost(username, 0)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -107,8 +104,8 @@ func Users(w http.ResponseWriter, req *http.Request) {
 		Following:        stats.Following,
 		Public:           stats.Public,
 		Suspended:        stats.Suspended,
-		CanAccessPost:    allow_post_access,
-		FollowedByViewer: viewer_follows,
+		CanAccessPost:    allowPostAccess,
+		FollowedByViewer: viewerFollows,
 		Posts:            posts,
 	})
 }
