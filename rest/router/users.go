@@ -141,7 +141,8 @@ func Delete(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	_, err = database.DeleteUser(vanity)
+	_, err = database.MakeRequest("MATCH (u:User {name: $id})-[:Create]->(p:Post) DETACH DELETE p WITH u MATCH (u)-[:Commented]->(c:Comment) DETACH DELETE c WITH u MATCH (u)-[r]-() DELETE r WITH u DETACH DELETE u;",
+		map[string]interface{}{"id": vanity})
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
