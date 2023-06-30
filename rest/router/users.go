@@ -19,7 +19,7 @@ func UserHandler(w http.ResponseWriter, req *http.Request) {
 		Index(w, req)
 	} else if id != "" && req.Method == http.MethodGet {
 		GetUser(w, req)
-	} else if id != "" && id == ME && req.Method == http.MethodDelete {
+	} else if req.Method == http.MethodDelete {
 		Delete(w, req)
 	} else if id != "" && id == ME && req.Method == http.MethodPatch {
 		update(w, req)
