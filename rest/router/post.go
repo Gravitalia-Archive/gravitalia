@@ -28,6 +28,8 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		Get(w, r)
 	} else if r.Method == http.MethodPost && id == NEW {
 		New(w, r)
+	} else if r.Method == http.MethodDelete {
+		DeletePost(w, r)
 	}
 }
 
@@ -191,5 +193,38 @@ func New(w http.ResponseWriter, req *http.Request) {
 	jsonEncoder.Encode(model.RequestError{
 		Error:   false,
 		Message: id,
+	})
+}
+
+// DeletePost delete wanted post if related to connected user
+func DeletePost(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	jsonEncoder := json.NewEncoder(w)
+
+	vanity := getVanity(req.Header.Get("authorization"))
+	if vanity == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInvalidToken,
+		})
+		return
+	}
+
+	id := strings.TrimPrefix(req.URL.Path, "/posts/")
+
+	_, err := database.MakeRequest("MATCH (p:Post {id: $to})<-[:Create]-(:User {name: $id}) OPTIONAL MATCH (c:Comment)-[:Comment]-(p) WITH p, c DETACH DELETE r, c;", map[string]any{"id": vanity, "to": id})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorWithDatabase,
+		})
+		return
+	}
+
+	jsonEncoder.Encode(model.RequestError{
+		Error:   false,
+		Message: Ok,
 	})
 }
