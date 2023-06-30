@@ -76,7 +76,7 @@ func GetUser(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check if viewer have access to the user's post
-	allowPostAccess := stats.Public || (authHeader != "" && id != ME && me != "" && id != me && viewerFollows)
+	allowPostAccess := stats.Public || (authHeader != "" && id != ME) || viewerFollows || (authHeader != "" && id == me)
 
 	posts := make([]model.Post, 0)
 	if allowPostAccess {
