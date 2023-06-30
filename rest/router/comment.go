@@ -13,12 +13,12 @@ import (
 )
 
 // getVanity permit to get vanity
-func getVanity(req *http.Request) string {
+func getVanity(token string) string {
 	var vanity string
-	if req.Header.Get("authorization") == "" {
+	if token == "" {
 		return ""
 	} else {
-		data, err := helpers.CheckToken(req.Header.Get("authorization"))
+		data, err := helpers.CheckToken(token)
 		if err != nil {
 			return ""
 		}
@@ -55,19 +55,19 @@ func isAReply(id string) string {
 
 func Handler(w http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet {
-		get_comment(w, req)
+		getComment(w, req)
 	} else if req.Method == http.MethodPost {
-		add_comment(w, req)
+		addComment(w, req)
 	} else if req.Method == http.MethodDelete {
-		delete_comment(w, req)
+		deleteComment(w, req)
 	}
 }
 
-func get_comment(w http.ResponseWriter, req *http.Request) {
+func getComment(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
-	vanity := getVanity(req)
+	vanity := getVanity(req.Header.Get("authorization"))
 
 	id := strings.TrimPrefix(req.URL.Path, "/comment/")
 	post, err := database.GetPost(id, "")
@@ -152,11 +152,11 @@ func get_comment(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func add_comment(w http.ResponseWriter, req *http.Request) {
+func addComment(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
-	vanity := getVanity(req)
+	vanity := getVanity(req.Header.Get("authorization"))
 	if vanity == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
@@ -288,11 +288,11 @@ func add_comment(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
-func delete_comment(w http.ResponseWriter, req *http.Request) {
+func deleteComment(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
-	vanity := getVanity(req)
+	vanity := getVanity(req.Header.Get("authorization"))
 	if vanity == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
