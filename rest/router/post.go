@@ -112,44 +112,72 @@ func New(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if len(getbody.Images) > 5 {
+		w.WriteHeader(http.StatusBadRequest)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorExceededMaximumImages,
+		})
+		return
+	}
+
 	// Define channels
 	tag := make(chan string)
-	is_nude := make(chan bool)
+	isNude := make([]chan bool, len(getbody.Images))
 
 	go func() {
 		res, _ := grpc.TagImage(0, getbody.Images[0])
 		tag <- res
 	}()
 
-	go func() {
-		res, _ := grpc.TagImage(1, getbody.Images[0])
-		is_nude <- res == "nude"
-	}()
-
-	// Checks if content is prohibited
-	if <-is_nude {
-		w.WriteHeader(http.StatusBadRequest)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: ErrorInvalidContent,
-		})
-		return
+	for i, image := range getbody.Images {
+		isNude[i] = make(chan bool)
+		go func(i int, image []byte) {
+			res, _ := grpc.TagImage(1, image)
+			isNude[i] <- res == "nude"
+		}(i, image)
 	}
 
-	// Publish content
-	hash, err := grpc.UploadImage(getbody.Images[0])
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: ErrorUploading,
-		})
-		return
+	// Checks if content is prohibited
+	for _, isNudeChan := range isNude {
+		if <-isNudeChan {
+			w.WriteHeader(http.StatusBadRequest)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: ErrorInvalidContent,
+			})
+			return
+		}
+	}
+
+	// Publish contents
+	hashChans := make([]chan string, len(getbody.Images))
+	for i, image := range getbody.Images {
+		hashChans[i] = make(chan string)
+		go func(i int, image []byte) {
+			res, err := grpc.UploadImage(image)
+			if err != nil {
+				log.Println(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				jsonEncoder.Encode(model.RequestError{
+					Error:   true,
+					Message: ErrorUploading,
+				})
+				return
+			}
+
+			hashChans[i] <- res
+		}(i, image)
+	}
+
+	// Convert string channel to string
+	hash := make([]string, len(getbody.Images))
+	for i, hashChan := range hashChans {
+		hash[i] = <-hashChan
 	}
 
 	id := helpers.Generate()
-	_, err = database.CreatePost(id, vanity, <-tag, getbody.Description, []string{hash})
+	_, err = database.CreatePost(id, vanity, <-tag, getbody.Description, hash)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
