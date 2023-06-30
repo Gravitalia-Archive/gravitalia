@@ -141,7 +141,7 @@ func Delete(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	_, err = database.MakeRequest("MATCH (u:User {name: $id})-[:Create]->(p:Post) DETACH DELETE p WITH u MATCH (u)-[:Commented]->(c:Comment) DETACH DELETE c WITH u MATCH (u)-[r]-() DELETE r WITH u DETACH DELETE u;",
+	_, err = database.MakeRequest("MATCH (u:User {name: $id}) OPTIONAL MATCH (u)-[:Wrote]->(p:Post) OPTIONAL MATCH (u)-[:Wrote]->(c:Comment) OPTIONAL MATCH (u)-[r]-() DETACH DELETE p, c, r, u;",
 		map[string]interface{}{"id": vanity})
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
