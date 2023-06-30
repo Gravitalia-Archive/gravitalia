@@ -15,7 +15,9 @@ import (
 // UserHandler routes to the right function
 func UserHandler(w http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/users/")
-	if id != "" && req.Method == http.MethodGet {
+	if req.Method == http.MethodOptions {
+		Index(w, req)
+	} else if id != "" && req.Method == http.MethodGet {
 		GetUser(w, req)
 	} else if id != "" && id == ME && req.Method == http.MethodDelete {
 		Delete(w, req)
