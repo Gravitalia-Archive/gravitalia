@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -246,8 +245,19 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Check if data has been recuperated 24 hours ago
+	val, _ := database.Mem.Get(vanity + "-data")
+	if val != nil && string(val.Value) == "ok" {
+		w.WriteHeader(http.StatusBadRequest)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorDataRequested,
+		})
+		return
+	}
+
 	// Create CSV with user data
-	userFilePath, err := database.MakeRequest("WITH \"MATCH (u:User {name: '"+vanity+"'}) RETURN u.name as vanity, u.community as community_id, u.rank as rank, u.public as is_public, u.suspended as is_suspended;\" as query CALL export_util.csv_query(query, \"/var/lib/memgraph/user.csv\", True) YIELD file_path RETURN file_path;",
+	userFilePath, err := database.MakeRequest("WITH \"MATCH (u:User {name: '"+vanity+"'}) RETURN u.name as vanity, u.community as community_id, u.rank as rank, u.public as is_public, u.suspended as is_suspended;\" as query CALL export_util.csv_query(query, \"/var/lib/data/user.csv\", True) YIELD file_path RETURN file_path;",
 		map[string]any{"id": vanity})
 	if err != nil {
 		log.Println("(getData)", err)
@@ -260,7 +270,7 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Create CSV with posts data
-	postFilePath, err := database.MakeRequest("WITH \"OPTIONAL MATCH (u:User {name: '"+vanity+"'})-[r]-(p:Post)-[:Show]-(t:Tag) WHERE type(r) = 'Create' OR type(r) = 'Like' OPTIONAL MATCH (p)-[:Comment]-(c:Comment)-[:Wrote]-(u) OPTIONAL MATCH (u)-[l:Like]->(p) WITH DISTINCT p, r, t, count(DISTINCT l) as likes, collect({id: c.id, text: c.text, timestamp: c.timestamp }) as my_comment RETURN p.id as id, p.text as description, p.hash as images, p.description as automatic_legend, t.name as autmatic_tag, likes, type(r) as relation, my_comment\" as query CALL export_util.csv_query(query, \"/var/lib/memgraph/$posts.csv\", True) YIELD file_path RETURN file_path;",
+	postFilePath, err := database.MakeRequest("WITH \"OPTIONAL MATCH (u:User {name: '"+vanity+"'})-[r]-(p:Post)-[:Show]-(t:Tag) WHERE type(r) = 'Create' OR type(r) = 'Like' OPTIONAL MATCH (p)-[:Comment]-(c:Comment)-[:Wrote]-(u) OPTIONAL MATCH (u)-[l:Like]->(p) WITH DISTINCT p, r, t, count(DISTINCT l) as likes, collect({id: c.id, text: c.text, timestamp: c.timestamp }) as my_comment RETURN p.id as id, p.text as description, p.hash as images, p.description as automatic_legend, t.name as autmatic_tag, likes, type(r) as relation, my_comment\" as query CALL export_util.csv_query(query, \"/var/lib/data/$posts.csv\", True) YIELD file_path RETURN file_path;",
 		map[string]any{"id": vanity})
 	if err != nil {
 		log.Println("(getData)", err)
@@ -271,8 +281,6 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 		})
 		return
 	}
-
-	fmt.Println(userFilePath.(string), postFilePath.(string))
 
 	// Create a buffer to write the ZIP file
 	zipBuffer := new(bytes.Buffer)
@@ -381,6 +389,9 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 		})
 		return
 	}
+
+	// Add 24h cooldown
+	database.Set(vanity+"-data", "ok", 86400)
 
 	// Set the appropriate headers for the ZIP file
 	w.Header().Set("Content-Type", "application/zip")
