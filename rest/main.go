@@ -37,13 +37,13 @@ func main() {
 	router := http.NewServeMux()
 	router.HandleFunc("/", route.Index)
 	router.HandleFunc("/callback", route.OAuth)
-	router.HandleFunc("/v1/new", route.New)
 	router.HandleFunc("/users/", route.UserHandler)
 	router.HandleFunc("/relation/", route.RelationHandler)
 	router.HandleFunc("/posts/", route.PostHandler)
 	router.HandleFunc("/comment/", route.Handler)
 	router.HandleFunc("/account/deletion", route.UserHandler)
 	router.HandleFunc("/account/suspend", route.Suspend)
+	router.HandleFunc("/account/data", route.GetData)
 	router.Handle("/metrics", promhttp.HandlerFor(helpers.GetRegistery(), promhttp.HandlerOpts{}))
 
 	// Init every helpers function and database variables
