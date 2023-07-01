@@ -213,7 +213,7 @@ func DeletePost(w http.ResponseWriter, req *http.Request) {
 
 	id := strings.TrimPrefix(req.URL.Path, "/posts/")
 
-	_, err := database.MakeRequest("MATCH (p:Post {id: $to})<-[:Create]-(:User {name: $id}) OPTIONAL MATCH (c:Comment)-[:Comment]-(p) WITH p, c DETACH DELETE r, c;", map[string]any{"id": vanity, "to": id})
+	_, err := database.MakeRequest("MATCH (p:Post {id: $to})<-[:Create]-(:User {name: $id}) OPTIONAL MATCH (c:Comment)-[:Comment]-(p) WITH p, c DETACH DELETE p, c;", map[string]any{"id": vanity, "to": id})
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
