@@ -19,6 +19,7 @@ const (
 	ErrorInvalidRelation       = "Invalid relation"
 	ErrorInvalidQuery          = "Invalid query"
 	ErrorInvalidUser           = "Invalid user"
+	ErrorDataRequested         = "Data requested less than 24 hours ago"
 )
 
 // Every OK message reponse
