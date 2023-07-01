@@ -215,6 +215,7 @@ func DeletePost(w http.ResponseWriter, req *http.Request) {
 
 	_, err := database.MakeRequest("MATCH (p:Post {id: $to})<-[:Create]-(:User {name: $id}) OPTIONAL MATCH (c:Comment)-[:Comment]-(p) WITH p, c DETACH DELETE r, c;", map[string]any{"id": vanity, "to": id})
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
