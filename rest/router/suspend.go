@@ -10,6 +10,8 @@ import (
 	"github.com/Gravitalia/gravitalia/model"
 )
 
+// Suspend allows to suspend a user if have
+// a valid authorization
 func Suspend(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
