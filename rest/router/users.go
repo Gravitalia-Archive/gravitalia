@@ -1,8 +1,12 @@
 package router
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -18,16 +22,16 @@ func UserHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodOptions {
 		Index(w, req)
 	} else if id != "" && req.Method == http.MethodGet {
-		GetUser(w, req)
+		getUser(w, req)
 	} else if req.Method == http.MethodDelete {
-		Delete(w, req)
+		deleteUser(w, req)
 	} else if id != "" && id == ME && req.Method == http.MethodPatch {
 		update(w, req)
 	}
 }
 
 // GetUser allows getting user data such as posts
-func GetUser(w http.ResponseWriter, req *http.Request) {
+func getUser(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
@@ -113,7 +117,7 @@ func GetUser(w http.ResponseWriter, req *http.Request) {
 }
 
 // Delete allows users to delete their account
-func Delete(w http.ResponseWriter, req *http.Request) {
+func deleteUser(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
@@ -205,4 +209,192 @@ func update(w http.ResponseWriter, req *http.Request) {
 		Error:   false,
 		Message: Ok,
 	})
+}
+
+// GetData returns a ZIP folder with two CSV files
+// containing user and liked/created posts data
+func GetData(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	jsonEncoder := json.NewEncoder(w)
+
+	// Check authorization header
+	authToken := req.Header.Get("authorization")
+
+	var vanity string
+	if authToken == os.Getenv("GLOBAL_AUTH") && req.URL.Query().Has("vanity") {
+		vanity = req.URL.Query().Get("vanity")
+	} else if authToken != "" {
+		user, err := helpers.CheckToken(authToken)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: ErrorInvalidToken,
+			})
+			return
+		}
+
+		vanity = user
+	}
+
+	if vanity == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInvalidToken,
+		})
+		return
+	}
+
+	// Create CSV with user data
+	userFilePath, err := database.MakeRequest("WITH \"MATCH (u:User {name: $id}) RETURN u.name as vanity, u.community as community_id, u.rank as rank, u.public as is_public, u.suspended as is_suspended;\" as query CALL export_util.csv_query(query, \"/var/lib/memgraph/$id_user.csv\", True) YIELD file_path RETURN file_path;",
+		map[string]interface{}{"id": vanity})
+	if err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorWithDatabase,
+		})
+		return
+	}
+
+	// Create CSV with posts data
+	postFilePath, err := database.MakeRequest("WITH \"OPTIONAL MATCH (u:User {name: $id})-[r]-(p:Post)-[:Show]-(t:Tag) WHERE type(r) = 'Create' OR type(r) = 'Like' OPTIONAL MATCH (p)-[:Comment]-(c:Comment)-[:Wrote]-(u) OPTIONAL MATCH (u)-[l:Like]->(p) WITH DISTINCT p, r, t, count(DISTINCT l) as likes, collect({id: c.id, text: c.text, timestamp: c.timestamp }) as my_comment RETURN p.id as id, p.text as description, p.hash as images, p.description as automatic_legend, t.name as autmatic_tag, likes, type(r) as relation, my_comment\" as query CALL export_util.csv_query(query, \"/var/lib/memgraph/$id_posts.csv\", True) YIELD file_path RETURN file_path;",
+		map[string]interface{}{"id": vanity})
+	if err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorWithDatabase,
+		})
+		return
+	}
+
+	fmt.Println(userFilePath.(string), postFilePath.(string))
+
+	// Create a buffer to write the ZIP file
+	zipBuffer := new(bytes.Buffer)
+	zipWriter := zip.NewWriter(zipBuffer)
+
+	// Add user CSV file to the ZIP
+	userCSVFile, err := os.Open(userFilePath.(string))
+	if err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInternalServerError,
+		})
+		return
+	}
+	defer userCSVFile.Close()
+
+	_, err = userCSVFile.Stat()
+	if err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInternalServerError,
+		})
+		return
+	}
+
+	userZipFile, err := zipWriter.Create("user.csv")
+	if err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInternalServerError,
+		})
+		return
+	}
+
+	_, err = io.Copy(userZipFile, userCSVFile)
+	if err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInternalServerError,
+		})
+		return
+	}
+
+	// Add post CSV file to the ZIP
+	postCSVFile, err := os.Open(postFilePath.(string))
+	if err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInternalServerError,
+		})
+		return
+	}
+	defer postCSVFile.Close()
+
+	_, err = postCSVFile.Stat()
+	if err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInternalServerError,
+		})
+		return
+	}
+
+	postZipFile, err := zipWriter.Create("posts.csv")
+	if err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInternalServerError,
+		})
+		return
+	}
+
+	_, err = io.Copy(postZipFile, postCSVFile)
+	if err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInternalServerError,
+		})
+		return
+	}
+
+	// Close the ZIP writer
+	err = zipWriter.Close()
+	if err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInternalServerError,
+		})
+		return
+	}
+
+	// Set the appropriate headers for the ZIP file
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", "attachment; filename=data.zip")
+
+	// Write the ZIP buffer to the response
+	_, err = zipBuffer.WriteTo(w)
+	if err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInternalServerError,
+		})
+		return
+	}
 }
