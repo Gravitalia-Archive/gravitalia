@@ -12,10 +12,11 @@ pub struct Error {
 pub struct User {
     pub vanity: String,
     username: String,
-    flags: u8
+    flags: u16
 }
 
 #[derive(Deserialize)]
 pub struct QuerySearch {
-    pub q: String
+    pub q: String,
+    pub limit: Option<u8>
 }
