@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"errors"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -24,10 +25,25 @@ func Init() {
 	Session = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	Mem = memcache.New(os.Getenv("MEM_URL"))
 
-	MakeRequest("CREATE CONSTRAINT ON (u:User) ASSERT u.name IS UNIQUE;", map[string]any{})
-	MakeRequest("CREATE CONSTRAINT ON (p:Post) ASSERT p.id IS UNIQUE;", map[string]any{})
-	MakeRequest("CREATE CONSTRAINT ON (t:Tag) ASSERT t.name IS UNIQUE;", map[string]any{})
-	MakeRequest("CREATE CONSTRAINT ON (c:Comment) ASSERT c.id IS UNIQUE;", map[string]any{})
+	_, err := MakeRequest("CREATE CONSTRAINT ON (u:User) ASSERT u.name IS UNIQUE;", map[string]any{})
+	if err != nil {
+		log.Fatalf("Cannot create constraints on User: %v", err)
+	}
+
+	_, err = MakeRequest("CREATE CONSTRAINT ON (p:Post) ASSERT p.id IS UNIQUE;", map[string]any{})
+	if err != nil {
+		log.Fatalf("Cannot create constraints on Post: %v", err)
+	}
+
+	_, err = MakeRequest("CREATE CONSTRAINT ON (t:Tag) ASSERT t.name IS UNIQUE;", map[string]any{})
+	if err != nil {
+		log.Fatalf("Cannot create constraints on Tag: %v", err)
+	}
+
+	_, err = MakeRequest("CREATE CONSTRAINT ON (c:Comment) ASSERT c.id IS UNIQUE;", map[string]any{})
+	if err != nil {
+		log.Fatalf("Cannot create constraints on Comment: %v", err)
+	}
 }
 
 // MakeRequest is a simple way to send a query
