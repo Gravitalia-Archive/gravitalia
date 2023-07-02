@@ -20,13 +20,13 @@ func InitTracer() (*zipkinhttp.Client, func(http.Handler) http.Handler) {
 	// create our local service endpoint
 	endpoint, err := zipkin.NewEndpoint("gravitaliaRest", "localhost:"+os.Getenv("PORT"))
 	if err != nil {
-		log.Fatalf("unable to create local endpoint: %+v\n", err)
+		log.Printf("unable to create local endpoint: %+v\n", err)
 	}
 
 	// initialize our tracer
 	tracer, err := zipkin.NewTracer(reporter, zipkin.WithLocalEndpoint(endpoint))
 	if err != nil {
-		log.Fatalf("unable to create tracer: %+v\n", err)
+		log.Printf("unable to create tracer: %+v\n", err)
 	}
 
 	// create global zipkin http server middleware
@@ -37,7 +37,7 @@ func InitTracer() (*zipkinhttp.Client, func(http.Handler) http.Handler) {
 	// create global zipkin traced http client
 	client, err := zipkinhttp.NewClient(tracer, zipkinhttp.ClientTrace(true))
 	if err != nil {
-		log.Fatalf("unable to create client: %+v\n", err)
+		log.Printf("unable to create client: %+v\n", err)
 	}
 
 	return client, serverMiddleware
