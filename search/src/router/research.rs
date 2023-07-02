@@ -14,7 +14,7 @@ pub async fn research(query: model::QuerySearch) -> Result<WithStatus<Json>> {
 
     Ok(warp::reply::with_status(
         warp::reply::json(
-            &database::search(query.q, query.limit.unwrap_or_else(|| 3).max(20))
+            &database::search(query.q, query.limit.unwrap_or(3).max(20))
                 .await?
                 .hits
                 .into_iter()
