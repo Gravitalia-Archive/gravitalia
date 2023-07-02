@@ -41,12 +41,15 @@ pub async fn delete_document(id: String) -> Result<()> {
 }
 
 // Search into all documents
-pub async fn search(query: String) -> Result<SearchResults<User>> {
+pub async fn search(query: String, limit: u8) -> Result<SearchResults<User>> {
     Ok(
         INDEX.get().unwrap()
         .search()
         .with_query(&query)
-        .with_limit(3)
+        .with_sort(&[
+            "flags:desc"
+        ])
+        .with_limit(limit.into())
         .execute::<User>()
         .await?
     )
