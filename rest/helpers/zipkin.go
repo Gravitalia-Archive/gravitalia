@@ -18,7 +18,7 @@ func InitTracer() (*zipkinhttp.Client, func(http.Handler) http.Handler) {
 	}()
 
 	// create our local service endpoint
-	endpoint, err := zipkin.NewEndpoint("gravitaliaRest", "localhost:"+os.Getenv("PORT"))
+	endpoint, err := zipkin.NewEndpoint("gravitaliaRest", os.Getenv("ZIPKIN_ADDRESS"))
 	if err != nil {
 		log.Printf("unable to create local endpoint: %+v\n", err)
 	}
