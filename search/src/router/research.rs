@@ -24,7 +24,7 @@ pub async fn research(query: model::QuerySearch) -> Result<WithStatus<Json>> {
             ))
         },
         Err(e) => {
-            eprintln!(e);
+            eprintln!("{}", e);
             Err(e)
         }
     }
