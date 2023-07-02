@@ -35,8 +35,12 @@ func main() {
 
 	// Create routes
 	router := http.NewServeMux()
+
+	// Add tracer
+	client, serverMiddleware := helpers.InitTracer()
+
 	router.HandleFunc("/", route.Index)
-	router.HandleFunc("/callback", route.OAuth)
+	router.HandleFunc("/callback", route.OAuth(client))
 	router.HandleFunc("/users/", route.UserHandler)
 	router.HandleFunc("/relation/", route.RelationHandler)
 	router.HandleFunc("/posts/", route.PostHandler)
@@ -58,7 +62,7 @@ func main() {
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 	server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		middleware(router).ServeHTTP(w, r)
+		middleware(serverMiddleware(router)).ServeHTTP(w, r)
 	})
 
 	if err := server.ListenAndServe(); err != nil {
