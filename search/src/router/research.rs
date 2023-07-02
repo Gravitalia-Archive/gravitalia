@@ -12,14 +12,20 @@ pub async fn research(query: model::QuerySearch) -> Result<WithStatus<Json>> {
         }), StatusCode::BAD_REQUEST));
     }
 
-    Ok(warp::reply::with_status(
-        warp::reply::json(
-            &database::search(query.q, query.limit.unwrap_or(3).max(20))
-                .await?
-                .hits
-                .into_iter()
-                .map(|u| u.result.vanity)
-                .collect::<Vec<String>>()
-        ), StatusCode::OK
-    ))
+    match database::search(query.q, query.limit.unwrap_or(3).max(20)).await {
+        Ok(d) => {
+            Ok(warp::reply::with_status(
+                warp::reply::json(
+                    d.hits
+                        .into_iter()
+                        .map(|u| u.result.vanity)
+                        .collect::<Vec<String>>()
+                ), StatusCode::OK
+            ))
+        },
+        Err(e) => {
+            eprintln!(e);
+            Err(e)
+        }
+    }
 }
