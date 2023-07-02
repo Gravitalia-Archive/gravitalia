@@ -25,22 +25,22 @@ func Init() {
 	Session = driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	Mem = memcache.New(os.Getenv("MEM_URL"))
 
-	_, err := MakeRequest("CREATE CONSTRAINT ON (u:User) ASSERT u.name IS UNIQUE;", map[string]any{})
+	_, err := Session.Run(ctx, "CREATE CONSTRAINT ON (u:User) ASSERT u.name IS UNIQUE;", nil)
 	if err != nil {
 		log.Printf("Cannot create constraints on User: %v", err)
 	}
 
-	_, err = MakeRequest("CREATE CONSTRAINT ON (p:Post) ASSERT p.id IS UNIQUE;", map[string]any{})
+	_, err = Session.Run(ctx, "CREATE CONSTRAINT ON (p:Post) ASSERT p.id IS UNIQUE;", nil)
 	if err != nil {
 		log.Printf("Cannot create constraints on Post: %v", err)
 	}
 
-	_, err = MakeRequest("CREATE CONSTRAINT ON (t:Tag) ASSERT t.name IS UNIQUE;", map[string]any{})
+	_, err = Session.Run(ctx, "CREATE CONSTRAINT ON (t:Tag) ASSERT t.name IS UNIQUE;", nil)
 	if err != nil {
 		log.Printf("Cannot create constraints on Tag: %v", err)
 	}
 
-	_, err = MakeRequest("CREATE CONSTRAINT ON (c:Comment) ASSERT c.id IS UNIQUE;", map[string]any{})
+	_, err = Session.Run(ctx, "CREATE CONSTRAINT ON (c:Comment) ASSERT c.id IS UNIQUE;", nil)
 	if err != nil {
 		log.Printf("Cannot create constraints on Comment: %v", err)
 	}
