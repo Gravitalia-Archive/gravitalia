@@ -7,12 +7,15 @@ import (
 
 	"github.com/openzipkin/zipkin-go"
 	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
-	httpreporter "github.com/openzipkin/zipkin-go/reporter/http"
+
+	//httpreporter "github.com/openzipkin/zipkin-go/reporter/http"
+	logreporter "github.com/openzipkin/zipkin-go/reporter/log"
 )
 
 func InitTracer() (*zipkinhttp.Client, func(http.Handler) http.Handler) {
 	// set up a span reporter
-	reporter := httpreporter.NewReporter("http://" + os.Getenv("ZIPKIN_ADDRESS") + "/api/v2/spans")
+	//reporter := httpreporter.NewReporter("http://" + os.Getenv("ZIPKIN_ADDRESS") + "/api/v2/spans")
+	reporter := logreporter.NewReporter(log.New(os.Stderr, "", log.LstdFlags))
 	defer func() {
 		_ = reporter.Close()
 	}()
