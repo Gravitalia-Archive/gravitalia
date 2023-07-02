@@ -16,7 +16,7 @@ pub async fn research(query: model::QuerySearch) -> Result<WithStatus<Json>> {
         Ok(d) => {
             Ok(warp::reply::with_status(
                 warp::reply::json(
-                    d.hits
+                    &d.hits
                         .into_iter()
                         .map(|u| u.result.vanity)
                         .collect::<Vec<String>>()
