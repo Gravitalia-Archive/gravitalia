@@ -7,6 +7,7 @@ require (
 	github.com/cristalhq/jwt/v5 v5.1.0
 	github.com/joho/godotenv v1.5.1
 	github.com/neo4j/neo4j-go-driver/v5 v5.9.0
+	github.com/openzipkin/zipkin-go v0.4.1
 	github.com/prometheus/client_golang v1.16.0
 	golang.org/x/text v0.10.0
 	google.golang.org/grpc v1.56.1
