@@ -14,6 +14,8 @@ import (
 )
 
 func main() {
+	log.Println("Starting server...")
+
 	// Get key-value in .env file
 	godotenv.Load()
 
@@ -45,7 +47,7 @@ func main() {
 	router.HandleFunc("/relation/", route.RelationHandler)
 	router.HandleFunc("/posts/", route.PostHandler)
 	router.HandleFunc("/comment/", route.Handler)
-	router.HandleFunc("/account/deletion", route.UserHandler)
+	router.HandleFunc("/account/deletion", route.DeleteUser(client))
 	router.HandleFunc("/account/suspend", route.Suspend)
 	router.HandleFunc("/account/data", route.GetData)
 	router.Handle("/metrics", promhttp.HandlerFor(helpers.GetRegistery(), promhttp.HandlerOpts{}))
