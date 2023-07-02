@@ -18,6 +18,9 @@ pub async fn init() -> Result<()> {
     // Create index if not exists
     client.create_index("gravitalia", Some("vanity")).await?;
 
+    // Add sortable keys
+    client.index("gravitalia").set_sortable_attributes(&["flags"]).await?;
+
     // Set index
     let _ = INDEX.set(client.index("gravitalia"));
 
