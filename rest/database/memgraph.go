@@ -27,22 +27,22 @@ func Init() {
 
 	_, err := MakeRequest("CREATE CONSTRAINT ON (u:User) ASSERT u.name IS UNIQUE;", map[string]any{})
 	if err != nil {
-		log.Fatalf("Cannot create constraints on User: %v", err)
+		log.Printf("Cannot create constraints on User: %v", err)
 	}
 
 	_, err = MakeRequest("CREATE CONSTRAINT ON (p:Post) ASSERT p.id IS UNIQUE;", map[string]any{})
 	if err != nil {
-		log.Fatalf("Cannot create constraints on Post: %v", err)
+		log.Printf("Cannot create constraints on Post: %v", err)
 	}
 
 	_, err = MakeRequest("CREATE CONSTRAINT ON (t:Tag) ASSERT t.name IS UNIQUE;", map[string]any{})
 	if err != nil {
-		log.Fatalf("Cannot create constraints on Tag: %v", err)
+		log.Printf("Cannot create constraints on Tag: %v", err)
 	}
 
 	_, err = MakeRequest("CREATE CONSTRAINT ON (c:Comment) ASSERT c.id IS UNIQUE;", map[string]any{})
 	if err != nil {
-		log.Fatalf("Cannot create constraints on Comment: %v", err)
+		log.Printf("Cannot create constraints on Comment: %v", err)
 	}
 }
 

@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/Gravitalia/gravitalia/database"
 	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
+	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
 )
 
 // UserHandler routes to the right function
@@ -22,8 +24,6 @@ func UserHandler(w http.ResponseWriter, req *http.Request) {
 		Index(w, req)
 	} else if id != "" && req.Method == http.MethodGet {
 		getUser(w, req)
-	} else if req.Method == http.MethodDelete {
-		deleteUser(w, req)
 	} else if id != "" && id == ME && req.Method == http.MethodPatch {
 		update(w, req)
 	}
@@ -115,52 +115,66 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
-// Delete allows users to delete their account
-func deleteUser(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	jsonEncoder := json.NewEncoder(w)
+// DeleteUser allows users to delete their account
+func DeleteUser(zipkinClient *zipkinhttp.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		jsonEncoder := json.NewEncoder(w)
 
-	vanity := ""
-	var err error
+		vanity := ""
+		var err error
 
-	if req.Header.Get("Authorization") == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: ErrorInvalidToken,
-		})
-		return
-	} else if req.Header.Get("Authorization") == os.Getenv("GLOBAL_AUTH") {
-		vanity = req.URL.Query().Get("user")
-	} else {
-		vanity, err = helpers.CheckToken(req.Header.Get("Authorization"))
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
+		if req.Header.Get("Authorization") == "" {
+			w.WriteHeader(http.StatusBadRequest)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
 				Message: ErrorInvalidToken,
 			})
 			return
+		} else if req.Header.Get("Authorization") == os.Getenv("GLOBAL_AUTH") {
+			vanity = req.URL.Query().Get("user")
+		} else {
+			vanity, err = helpers.CheckToken(req.Header.Get("Authorization"))
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				jsonEncoder.Encode(model.RequestError{
+					Error:   true,
+					Message: ErrorInvalidToken,
+				})
+				return
+			}
 		}
-	}
 
-	_, err = database.MakeRequest("MATCH (u:User {name: $id}) OPTIONAL MATCH (u)-[:Wrote]->(p:Post) OPTIONAL MATCH (u)-[:Wrote]->(c:Comment) OPTIONAL MATCH (u)-[r]-() DETACH DELETE p, c, r, u;",
-		map[string]interface{}{"id": vanity})
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: ErrorInternalServerError,
+		_, err = database.MakeRequest("MATCH (u:User {name: $id}) OPTIONAL MATCH (u)-[:Wrote]->(p:Post) OPTIONAL MATCH (u)-[:Wrote]->(c:Comment) OPTIONAL MATCH (u)-[r]-() DETACH DELETE p, c, r, u;",
+			map[string]interface{}{"id": vanity})
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: ErrorInternalServerError,
+			})
+			return
+		}
+
+		database.Set(vanity+"-gd", "ok", 3600)
+
+		// Add user into document in case of search
+		documentUser, _ := json.Marshal(struct {
+			Vanity   string `json:"vanity"`
+			Username string `json:"username"`
+			Flags    int    `json:"flags"`
+		}{
+			Vanity:   vanity,
+			Username: "",
+			Flags:    0,
 		})
-		return
+		go makeRequest(zipkinClient, os.Getenv("SEARCH_API")+"/search/delete", "DELETE", bytes.NewBuffer(documentUser), os.Getenv("GLOBAL_AUTH"))
+
+		jsonEncoder.Encode(model.RequestError{
+			Error:   false,
+			Message: Ok,
+		})
 	}
-
-	database.Set(vanity+"-gd", "ok", 3600)
-
-	jsonEncoder.Encode(model.RequestError{
-		Error:   false,
-		Message: Ok,
-	})
 }
 
 // Handle patch method, allows to update user data
@@ -232,7 +246,6 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 			})
 			return
 		}
-
 		vanity = user
 	}
 
@@ -246,8 +259,7 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check if data has been recuperated 24 hours ago
-	val, _ := database.Mem.Get(vanity + "-data")
-	if val != nil && string(val.Value) == "ok" {
+	if val, _ := database.Mem.Get(vanity + "-data"); val != nil && string(val.Value) == "ok" {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
@@ -258,9 +270,8 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 
 	// Create CSV with user data
 	userFilePath, err := database.MakeRequest("WITH \"MATCH (u:User {name: '"+vanity+"'}) RETURN u.name as vanity, u.community as community_id, u.rank as rank, u.public as is_public, u.suspended as is_suspended;\" as query CALL export_util.csv_query(query, \"/var/lib/memgraph/user.csv\", True) YIELD file_path RETURN file_path;",
-		map[string]any{"id": vanity})
+		map[string]interface{}{"id": vanity})
 	if err != nil {
-		log.Println("(getData)", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
@@ -271,9 +282,8 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 
 	// Create CSV with posts data
 	postFilePath, err := database.MakeRequest("WITH \"OPTIONAL MATCH (u:User {name: '"+vanity+"'})-[r]-(p:Post)-[:Show]-(t:Tag) WHERE type(r) = 'Create' OR type(r) = 'Like' OPTIONAL MATCH (p)-[:Comment]-(c:Comment)-[:Wrote]-(u) OPTIONAL MATCH (u)-[l:Like]->(p) WITH DISTINCT p, r, t, count(DISTINCT l) as likes, collect({id: c.id, text: c.text, timestamp: c.timestamp }) as my_comment RETURN p.id as id, p.text as description, p.hash as images, p.description as automatic_legend, t.name as autmatic_tag, likes, type(r) as relation, my_comment\" as query CALL export_util.csv_query(query, \"/var/lib/memgraph/posts.csv\", True) YIELD file_path RETURN file_path;",
-		map[string]any{"id": vanity})
+		map[string]interface{}{"id": vanity})
 	if err != nil {
-		log.Println("(getData)", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
@@ -286,97 +296,44 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 	zipBuffer := new(bytes.Buffer)
 	zipWriter := zip.NewWriter(zipBuffer)
 
-	// Add user CSV file to the ZIP
-	userCSVFile, err := os.Open(userFilePath.(string))
-	if err != nil {
-		log.Println("(getData)", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: ErrorInternalServerError,
-		})
-		return
-	}
-	defer userCSVFile.Close()
+	// Create a WaitGroup to synchronize goroutines
+	var wg sync.WaitGroup
 
-	_, err = userCSVFile.Stat()
-	if err != nil {
-		log.Println("(getData)", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: ErrorInternalServerError,
-		})
-		return
-	}
+	// Parallelize CSV file operations
+	wg.Add(2)
 
-	userZipFile, err := zipWriter.Create("user.csv")
-	if err != nil {
-		log.Println("(getData)", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: ErrorInternalServerError,
-		})
-		return
-	}
+	go func() {
+		defer wg.Done()
 
-	_, err = io.Copy(userZipFile, userCSVFile)
-	if err != nil {
-		log.Println("(getData)", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: ErrorInternalServerError,
-		})
-		return
-	}
+		// Add user CSV file to the ZIP
+		if err := addFileToZip(zipWriter, userFilePath.(string), "user.csv"); err != nil {
+			log.Println("(getData)", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: ErrorInternalServerError,
+			})
+			return
+		}
+	}()
 
-	// Add post CSV file to the ZIP
-	postCSVFile, err := os.Open(postFilePath.(string))
-	if err != nil {
-		log.Println("(getData)", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: ErrorInternalServerError,
-		})
-		return
-	}
-	defer postCSVFile.Close()
+	go func() {
+		defer wg.Done()
 
-	_, err = postCSVFile.Stat()
-	if err != nil {
-		log.Println("(getData)", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: ErrorInternalServerError,
-		})
-		return
-	}
+		// Add post CSV file to the ZIP
+		if err := addFileToZip(zipWriter, postFilePath.(string), "posts.csv"); err != nil {
+			log.Println("(getData)", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: ErrorInternalServerError,
+			})
+			return
+		}
+	}()
 
-	postZipFile, err := zipWriter.Create("posts.csv")
-	if err != nil {
-		log.Println("(getData)", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: ErrorInternalServerError,
-		})
-		return
-	}
-
-	_, err = io.Copy(postZipFile, postCSVFile)
-	if err != nil {
-		log.Println("(getData)", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   true,
-			Message: ErrorInternalServerError,
-		})
-		return
-	}
+	// Wait for goroutines to finish
+	wg.Wait()
 
 	// Close the ZIP writer
 	err = zipWriter.Close()
@@ -408,4 +365,29 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 		})
 		return
 	}
+}
+
+func addFileToZip(zipWriter *zip.Writer, filePath, fileName string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.Stat()
+	if err != nil {
+		return err
+	}
+
+	zipFile, err := zipWriter.Create(fileName)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(zipFile, file)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
