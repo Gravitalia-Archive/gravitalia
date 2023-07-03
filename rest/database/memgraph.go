@@ -111,6 +111,32 @@ func GetProfile(id string) (model.Profile, error) {
 	return profile, nil
 }
 
+// GetBasicProfile returns public and suspended
+func GetBasicProfile(id string) (model.Profile, error) {
+	var profile model.Profile
+
+	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+		result, err := transaction.Run(ctx,
+			"MATCH (u:User {name: $id}) RETURN u.public, u.suspended;",
+			map[string]any{"id": id})
+		if err != nil {
+			return nil, err
+		}
+
+		for result.Next(ctx) {
+			profile.Public = result.Record().Values[0].(bool)
+			profile.Suspended = result.Record().Values[1].(bool)
+		}
+
+		return profile, nil
+	})
+	if err != nil {
+		return model.Profile{Followers: -1, Following: -1}, err
+	}
+
+	return profile, nil
+}
+
 // GetUserPost is a function for getting every posts of a user
 // and see their likes
 func GetUserPost(id string, skip uint8) ([]model.Post, error) {
@@ -118,7 +144,7 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User {name: $id})-[:Create]->(p:Post) OPTIONAL MATCH (p)<-[l:Like]-(liker:User) RETURN p.id as id, p.hash, p.description, p.text, count(DISTINCT l) ORDER BY id DESC SKIP 0 LIMIT 12;",
+			"MATCH (u:User {name: $id})-[:Create]->(p:Post) OPTIONAL MATCH (p)<-[l:Like]-(liker:User) RETURN p.id, p.hash, p.description, p.text, count(DISTINCT l) ORDER BY id DESC SKIP 0 LIMIT 12;",
 			map[string]any{"id": id, "skip": skip * 12})
 		if err != nil {
 			return nil, err
@@ -170,15 +196,7 @@ func UserRelation(id string, to string, relationType string) (bool, error) {
 		identifier = "id"
 	}
 
-	res, err := MakeRequest("MATCH (a:User {name: $id})-[:"+relationType+"]->(b:"+content+"{"+identifier+": $to}) RETURN a;",
-		map[string]any{"id": id, "to": to})
-	if err != nil {
-		return false, err
-	} else if res != nil {
-		return false, errors.New("already " + relationType + "ed")
-	}
-
-	res, err = MakeRequest("MATCH (a:User {name: $id}), (b:"+content+" {"+identifier+": $to}) CREATE (a)-[r:"+relationType+"]->(b) RETURN type(r) QUERY MEMORY LIMIT 1 KB;",
+	res, err := MakeRequest("MATCH (a:User {name: $id}) MATCH (b:"+content+"{"+identifier+": $to) OPTIONAL MATCH (a)-[r:"+relationType+"]->(b) DELETE r WITH a, b, count(r) AS deleted_count WHERE deleted_count = 0 CREATE (a)-[:Block]->(b)",
 		map[string]any{"id": id, "to": to})
 	if err != nil {
 		return false, err
