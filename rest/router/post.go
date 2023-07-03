@@ -107,7 +107,7 @@ func getPost(w http.ResponseWriter, req *http.Request) {
 		allowAccess = false
 	}
 
-	if allowAccess {
+	if !allowAccess {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
