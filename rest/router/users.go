@@ -72,7 +72,11 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 		}
 		username = vanity
 		me = vanity
+		log.Println("vanity", vanity)
+		log.Println("me", me)
 	}
+
+	log.Println("me", me)
 
 	// Get user profile
 	stats, err := database.GetProfile(username)
