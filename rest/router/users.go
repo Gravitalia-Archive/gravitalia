@@ -100,6 +100,8 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
+		log.Println(res)
+
 		if res != nil {
 			viewerFollows = true
 		}
@@ -114,7 +116,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check if viewer have access to the user's post
-	allowPostAccess := stats.Public || (authHeader != "" && id != ME) || viewerFollows || (authHeader != "" && id == me)
+	allowPostAccess := stats.Public || viewerFollows || (authHeader != "" && id == me)
 	if isBlocked {
 		allowPostAccess = false
 	}
