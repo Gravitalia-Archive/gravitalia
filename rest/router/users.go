@@ -60,7 +60,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	authHeader := req.Header.Get("Authorization")
 
 	// Check actual user
-	if username == ME && authHeader != "" {
+	if authHeader != "" {
 		vanity, err := helpers.CheckToken(authHeader)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -70,13 +70,11 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 			})
 			return
 		}
-		username = vanity
+		if username == ME {
+			username = vanity
+		}
 		me = vanity
-		log.Println("vanity", vanity)
-		log.Println("me", me)
 	}
-
-	log.Println("me", me)
 
 	// Get user profile
 	stats, err := database.GetProfile(username)
@@ -92,7 +90,6 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	// Check if viewer is following user
 	var viewerFollows bool
 	if authHeader != "" {
-		log.Println("test", me, username)
 		res, err := database.MakeRequest("MATCH (:User {name: $id})-[r:Subscriber]->(:User {name: $to}) RETURN NOT(r IS NULL);",
 			map[string]any{"id": me, "to": username})
 		if err != nil {
@@ -105,16 +102,12 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		log.Println("a", res)
-
 		if res == nil {
 			viewerFollows = false
 		} else {
 			viewerFollows = res.(bool)
 		}
 	}
-
-	log.Println("b", viewerFollows)
 
 	// Check if account is blocked
 	isBlocked, err := isAccountBlocked(me, username)
