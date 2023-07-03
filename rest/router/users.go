@@ -20,11 +20,21 @@ import (
 // isAccountBlocked returns a boolean. If one of the both
 // account blocked the other, returns true.
 func isAccountBlocked(id string, to string) (bool, error) {
+	if id == "" || to == "" {
+		return false, nil
+	}
+	log.Println(id, to)
 	res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:Block]-(b) RETURN NOT(r IS NULL);",
 		map[string]any{"id": id, "to": to})
 	if err != nil {
+		log.Printf("(isAccountBlocked) %v", err)
 		return false, err
+	} else if res == nil {
+		log.Println(res)
+		return false, nil
 	}
+
+	log.Println(res)
 
 	return res.(bool), nil
 }
