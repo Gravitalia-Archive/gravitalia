@@ -127,7 +127,24 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: err.Error(),
+				Message: ErrorWithDatabase,
+			})
+			return
+		}
+	}
+
+	if relation == "Subscriber" {
+		isBlocked, err := isAccountBlocked(vanity, getbody.Id)
+		if err != nil {
+			log.Printf("(Relation) Cannot know if users are blocked: %v", err)
+			isBlocked = false
+		}
+
+		if isBlocked {
+			w.WriteHeader(http.StatusConflict)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: ErrorInvalidUser,
 			})
 			return
 		}
@@ -141,7 +158,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: err.Error(),
+			Message: ErrorWithDatabase,
 		})
 		return
 	}
