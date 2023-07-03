@@ -88,7 +88,8 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	// Check if viewer is following user
 	var viewerFollows bool
 	if authHeader != "" {
-		viewerFollows, err = database.IsUserSubscrirerTo(me, username)
+		res, err := database.MakeRequest("MATCH (a:User {name: $id})-[:Subscriber]->(b:User {name: $to}) RETURN a;",
+			map[string]any{"id": me, "to": username})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
@@ -96,6 +97,10 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 				Message: ErrorInvalidRelation,
 			})
 			return
+		}
+
+		if res != nil {
+			viewerFollows = true
 		}
 	}
 
