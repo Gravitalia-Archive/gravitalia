@@ -96,8 +96,8 @@ func GetProfile(id string) (model.Profile, error) {
 				return nil, errors.New("invalid user")
 			}
 
-			profile.Followers = result.Record().Values[0].(int64)
-			profile.Following = result.Record().Values[1].(int64)
+			profile.Followers = result.Record().Values[0].(uint32)
+			profile.Following = result.Record().Values[1].(uint32)
 			profile.Public = result.Record().Values[2].(bool)
 			profile.Suspended = result.Record().Values[3].(bool)
 		}
@@ -105,7 +105,7 @@ func GetProfile(id string) (model.Profile, error) {
 		return profile, nil
 	})
 	if err != nil {
-		return model.Profile{Followers: -1, Following: -1}, err
+		return model.Profile{Followers: 0, Following: 0}, err
 	}
 
 	return profile, nil
@@ -131,7 +131,7 @@ func GetBasicProfile(id string) (model.Profile, error) {
 		return profile, nil
 	})
 	if err != nil {
-		return model.Profile{Followers: -1, Following: -1}, err
+		return model.Profile{Followers: 0, Following: 0}, err
 	}
 
 	return profile, nil
