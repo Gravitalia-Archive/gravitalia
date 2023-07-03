@@ -96,8 +96,8 @@ func GetProfile(id string) (model.Profile, error) {
 				return nil, errors.New("invalid user")
 			}
 
-			profile.Followers = result.Record().Values[0].(uint32)
-			profile.Following = result.Record().Values[1].(uint32)
+			profile.Followers = uint32(result.Record().Values[0].(int64))
+			profile.Following = uint32(result.Record().Values[1].(int64))
 			profile.Public = result.Record().Values[2].(bool)
 			profile.Suspended = result.Record().Values[3].(bool)
 		}
