@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/cristalhq/jwt/v5 v5.1.0
 	github.com/joho/godotenv v1.5.1
-	github.com/neo4j/neo4j-go-driver/v5 v5.9.0
+	github.com/neo4j/neo4j-go-driver/v5 v5.10.0
 	github.com/openzipkin/zipkin-go v0.4.1
 	github.com/prometheus/client_golang v1.16.0
 	github.com/robfig/cron/v3 v3.0.1
@@ -20,6 +20,5 @@ require (
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
 	golang.org/x/sys v0.8.0 // indirect
-	google.golang.org/grpc v1.50.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 )
