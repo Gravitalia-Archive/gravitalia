@@ -23,18 +23,15 @@ func isAccountBlocked(id string, to string) (bool, error) {
 	if id == "" || to == "" {
 		return false, nil
 	}
-	log.Println(id, to)
+
 	res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:Block]-(b) RETURN NOT(r IS NULL);",
 		map[string]any{"id": id, "to": to})
 	if err != nil {
 		log.Printf("(isAccountBlocked) %v", err)
 		return false, err
 	} else if res == nil {
-		log.Println(res)
 		return false, nil
 	}
-
-	log.Println(res)
 
 	return res.(bool), nil
 }
@@ -118,6 +115,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	if allowPostAccess {
 		posts, err = database.GetUserPost(username, 0)
 		if err != nil {
+			log.Printf("(getUser) cannot get posts: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
