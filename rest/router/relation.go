@@ -151,7 +151,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Create or delete asked relation
-	res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:"+content+"{"+identifier+": $to}) OPTIONAL MATCH (a)-[r:"+relation+"]->(b) DELETE r FOREACH (x IN CASE WHEN r IS NULL THEN [1] ELSE [] END |	CREATE (a)-[:Block]->(b)	) RETURN NOT(r IS NULL);",
+	res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:"+content+"{"+identifier+": $to}) OPTIONAL MATCH (a)-[r:"+relation+"]->(b) DELETE r FOREACH (x IN CASE WHEN r IS NULL THEN [1] ELSE [] END |	CREATE (a)-[:"+relation+"]->(b)	) RETURN NOT(r IS NULL);",
 		map[string]any{"id": vanity, "to": getbody.Id})
 	if err != nil {
 		log.Printf("(Relation) Got an error: %v", err)
