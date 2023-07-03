@@ -88,7 +88,8 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	// Check if viewer is following user
 	var viewerFollows bool
 	if authHeader != "" {
-		res, err := database.MakeRequest("MATCH (a:User {name: $id})-[:Subscriber]->(b:User {name: $to}) RETURN a;",
+		log.Println("test", me, username)
+		res, err := database.MakeRequest("MATCH (:User {name: $id})-[r:Subscriber]->(:User {name: $to}) RETURN NOT(r IS NULL);",
 			map[string]any{"id": me, "to": username})
 		if err != nil {
 			log.Printf("(getUser) cannot know if user follows: %v", err)
@@ -100,14 +101,16 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		log.Println(res)
+		log.Println("a", res)
 
-		if res != nil {
-			viewerFollows = true
+		if res == nil {
+			viewerFollows = false
+		} else {
+			viewerFollows = res.(bool)
 		}
 	}
 
-	log.Println(viewerFollows)
+	log.Println("b", viewerFollows)
 
 	// Check if account is blocked
 	isBlocked, err := isAccountBlocked(me, username)
@@ -136,8 +139,8 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	}
 
 	jsonEncoder.Encode(struct {
-		Followers        int64        `json:"followers"`
-		Following        int64        `json:"following"`
+		Followers        uint32       `json:"followers"`
+		Following        uint32       `json:"following"`
 		Public           bool         `json:"public"`
 		Suspended        bool         `json:"suspended"`
 		CanAccessPost    bool         `json:"access_post"`
