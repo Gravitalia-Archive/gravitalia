@@ -3,6 +3,7 @@ package router
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -28,6 +29,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
+	// Check valid relation
 	relation := cases.Title(language.English, cases.Compact).String(strings.TrimPrefix(req.URL.Path, "/relation/"))
 	if relation == "" || func() bool {
 		for _, v := range []string{"Like", "Subscriber", "Block", "Love"} {
@@ -45,6 +47,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Check token
 	var vanity string
 	if req.Header.Get("Authorization") == "" {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -98,16 +101,43 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	isValid, err := database.UserRelation(vanity, getbody.Id, relation)
+	var content string
+	switch relation {
+	case "Subscriber", "Block":
+		content = "User"
+	case "Like", "View":
+		content = "Post"
+	case "Love":
+		content = "Comment"
+	}
 
-	if err != nil && strings.Contains(err.Error(), "already") {
-		database.UserUnRelation(vanity, getbody.Id, relation)
-		jsonEncoder.Encode(model.RequestError{
-			Error:   false,
-			Message: OkDeletedRelation,
-		})
-		return
-	} else if err != nil || !isValid {
+	var identifier string
+	if content == "User" {
+		identifier = "name"
+	} else {
+		identifier = "id"
+	}
+
+	// Remove subscription relations
+	if relation == "Block" {
+		_, err = database.MakeRequest("(:User {name: $id})-[r:Subscriber]-(:User {name: $to}) DELETE r;",
+			map[string]any{"id": vanity, "to": getbody.Id})
+		if err != nil {
+			log.Printf("(Relation) Cannot remove subscription: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: err.Error(),
+			})
+			return
+		}
+	}
+
+	// Create or delete asked relation
+	res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:"+content+"{"+identifier+": $to}) OPTIONAL MATCH (a)-[r:"+relation+"]->(b) DELETE r FOREACH (x IN CASE WHEN r IS NULL THEN [1] ELSE [] END |	CREATE (a)-[:Block]->(b)	) RETURN NOT(r IS NULL);",
+		map[string]any{"id": vanity, "to": getbody.Id})
+	if err != nil {
+		log.Printf("(Relation) Got an error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
@@ -116,10 +146,17 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jsonEncoder.Encode(model.RequestError{
-		Error:   false,
-		Message: OkCreatedRelation,
-	})
+	if res.(bool) {
+		jsonEncoder.Encode(model.RequestError{
+			Error:   false,
+			Message: OkDeletedRelation,
+		})
+	} else {
+		jsonEncoder.Encode(model.RequestError{
+			Error:   false,
+			Message: OkCreatedRelation,
+		})
+	}
 }
 
 // Exists handles route to know if a relation
