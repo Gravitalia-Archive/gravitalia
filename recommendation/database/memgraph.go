@@ -114,7 +114,7 @@ func LastCommunityPost(id string) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User {name: $id}) WITH u.community AS community MATCH (a:User {community: community})-[r]->(p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((u)-[:View]->(p)) WITH p, t, count(r) AS connections ORDER BY connections DESC LIMIT 100 WITH p, t ORDER BY p.id DESC LIMIT 30 RETURN p.id, p.text, p.description, t.name;",
+			"MATCH (u:User {name: $id}) WITH u MATCH (a:User {community: u.community})-[r]->(p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((u)-[:View]->(p)) WITH p, t, count(r) as connections ORDER BY connections DESC LIMIT 100 WITH p, t ORDER BY p.id DESC LIMIT 30 RETURN p.id, p.text, p.description, t.name;",
 			map[string]any{"id": id})
 		if err != nil {
 			return nil, err
@@ -137,7 +137,8 @@ func LastLikedPost(id string) ([]model.Post, error) {
 	var list []model.Post
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
-		result, err := transaction.Run(ctx, "MATCH (u:User {name: $id})-[:Like]->(p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((u)-[:View]->(p)) WITH p, t ORDER BY p.id DESC LIMIT 1 WITH t MATCH (p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((u)-[:View]->(p)) WITH p, t ORDER BY p.id DESC LIMIT 10 RETURN p.id, p.text, p.description, t.name;",
+		result, err := transaction.Run(ctx,
+			"MATCH (u:User {name: $id})-[:Like]->(p:Post)-[:Show]->(t:Tag) WITH u, p, t ORDER BY p.id DESC LIMIT 1 WITH u, t MATCH (p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((u)-[:View]->(p)) WITH p, t ORDER BY p.id DESC LIMIT 10 RETURN p.id, p.text, p.description, t.name;",
 			map[string]any{"id": id})
 		if err != nil {
 			return nil, err
@@ -161,7 +162,7 @@ func JaccardRank(id string, idList []string) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User {name: $id})-[:Like]->(p:Post) WITH u, p LIMIT 10 MATCH (l:Post) WHERE l.id IN $list AND NOT EXISTS((u)-[:View]->(l)) WITH l, p ORDER BY p.id DESC WITH collect(l) as posts, collect(p) as likedPosts CALL node_similarity.jaccard_pairwise(posts, likedPosts) YIELD node1, node2, similarity WITH node1, similarity ORDER BY similarity DESC LIMIT 15 OPTIONAL MATCH (a:User)-[:Like]->(node1) WITH node1, count(DISTINCT a) as numLikes MATCH (creator:User)-[:Create]-(node1) WITH node1, numLikes, creator OPTIONAL MATCH (:User {name: $id})-[r:Like]-(node1) RETURN node1.id, node1.text, node1.description, numLikes, node1.hash, creator.name, CASE WHEN r IS NULL THEN false ELSE true END;",
+			"MATCH (u:User {name: $id})-[:Like]->(p:Post) WITH u, p LIMIT 10 MATCH (l:Post) WHERE l.id IN $list WITH l, p ORDER BY p.id DESC WITH collect(l) as posts, collect(p) as likedPosts CALL node_similarity.jaccard_pairwise(posts, likedPosts) YIELD node1, node2, similarity WITH node1, similarity ORDER BY similarity DESC LIMIT 15 OPTIONAL MATCH (a:User)-[:Like]->(node1) WITH node1, count(DISTINCT a) as numLikes MATCH (creator:User)-[:Create]-(node1) WITH node1, numLikes, creator OPTIONAL MATCH (:User {name: $id})-[r:Like]-(node1) RETURN node1.id, node1.text, node1.description, numLikes, node1.hash, creator.name, CASE WHEN r IS NULL THEN false ELSE true END;",
 			map[string]any{"id": id, "list": idList})
 		if err != nil {
 			return nil, err
