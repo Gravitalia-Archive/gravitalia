@@ -70,6 +70,7 @@ func getPost(w http.ResponseWriter, req *http.Request) {
 	// Get user profile
 	stats, err := database.GetBasicProfile(post.Author)
 	if err != nil || stats.Suspended {
+		log.Printf("(getPost) cannot get post author: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
@@ -83,6 +84,7 @@ func getPost(w http.ResponseWriter, req *http.Request) {
 	if authHeader != "" {
 		viewerFollows, err = database.IsUserSubscrirerTo(vanity, post.Author)
 		if err != nil {
+			log.Printf("(getPost) cannot know if user is subscriber: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
@@ -95,6 +97,7 @@ func getPost(w http.ResponseWriter, req *http.Request) {
 	// Check if account is blocked
 	isBlocked, err := isAccountBlocked(vanity, post.Author)
 	if err != nil {
+		log.Printf("(getPost) cannot know if users are blocked: %v", err)
 		isBlocked = false
 	}
 
