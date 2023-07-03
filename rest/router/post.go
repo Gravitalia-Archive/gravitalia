@@ -25,22 +25,25 @@ const (
 func PostHandler(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/posts/")
 	if r.Method == http.MethodGet && id != NEW {
-		Get(w, r)
+		getPost(w, r)
 	} else if r.Method == http.MethodPost && id == NEW {
-		New(w, r)
+		newPost(w, r)
 	} else if r.Method == http.MethodDelete {
-		DeletePost(w, r)
+		deletePost(w, r)
 	}
 }
 
-// Get routes to a post getter
-func Get(w http.ResponseWriter, req *http.Request) {
+// getPost routes to a post getter
+func getPost(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
+	authHeader := req.Header.Get("authorization")
+
+	// Check token
 	var vanity string
-	if req.Header.Get("authorization") != "" {
-		data, err := helpers.CheckToken(req.Header.Get("authorization"))
+	if authHeader != "" {
+		data, err := helpers.CheckToken(authHeader)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			jsonEncoder.Encode(model.RequestError{
@@ -52,6 +55,7 @@ func Get(w http.ResponseWriter, req *http.Request) {
 		vanity = data
 	}
 
+	// Get post
 	id := strings.TrimPrefix(req.URL.Path, "/posts/")
 	post, err := database.GetPost(id, vanity)
 	if err != nil || post.Id == "" {
@@ -63,11 +67,57 @@ func Get(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Get user profile
+	stats, err := database.GetBasicProfile(post.Author)
+	if err != nil || stats.Suspended {
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInvalidUser,
+		})
+		return
+	}
+
+	// Check if viewer is following user
+	var viewerFollows bool
+	if authHeader != "" {
+		viewerFollows, err = database.IsUserSubscrirerTo(vanity, post.Author)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: ErrorInvalidRelation,
+			})
+			return
+		}
+	}
+
+	// Check if account is blocked
+	isBlocked, err := isAccountBlocked(vanity, post.Author)
+	if err != nil {
+		isBlocked = false
+	}
+
+	// Check if viewer have access to the user's post
+	allowAccess := stats.Public || viewerFollows || (authHeader != "" && post.Author == vanity)
+	if isBlocked {
+		allowAccess = false
+	}
+
+	if allowAccess {
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInvalidPostAccess,
+		})
+		return
+	}
+
 	jsonEncoder.Encode(post)
 }
 
-// New routes allows to create a new post
-func New(w http.ResponseWriter, req *http.Request) {
+// newPost routes allows to create a new post
+func newPost(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
@@ -196,8 +246,8 @@ func New(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
-// DeletePost delete wanted post if related to connected user
-func DeletePost(w http.ResponseWriter, req *http.Request) {
+// deletePost delete wanted post if related to connected user
+func deletePost(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
