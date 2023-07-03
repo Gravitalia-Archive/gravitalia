@@ -48,7 +48,7 @@ func getPost(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: "Invalid token",
+				Message: ErrorInvalidToken,
 			})
 			return
 		}
@@ -62,7 +62,7 @@ func getPost(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid post",
+			Message: ErrorInvalidPost,
 		})
 		return
 	}
