@@ -116,6 +116,10 @@ func getPost(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Set post as viewed
+	database.MakeRequest("MATCH (a:User {name: $to}) MATCH (b:Post {id: $to}) MERGE (a)-[:View]->(b);",
+		map[string]any{"id": vanity, "to": post.Id})
+
 	jsonEncoder.Encode(post)
 }
 
