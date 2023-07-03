@@ -17,6 +17,18 @@ import (
 	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
 )
 
+// isAccountBlocked returns a boolean. If one of the both
+// account blocked the other, returns true.
+func isAccountBlocked(id string, to string) (bool, error) {
+	res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:Block]-(b) RETURN NOT(r IS NULL);",
+		map[string]any{"id": id, "to": to})
+	if err != nil {
+		return false, err
+	}
+
+	return res.(bool), nil
+}
+
 // UserHandler routes to the right function
 func UserHandler(w http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/users/")
@@ -80,8 +92,17 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	// Check if account is blocked
+	isBlocked, err := isAccountBlocked(me, username)
+	if err != nil {
+		isBlocked = false
+	}
+
 	// Check if viewer have access to the user's post
 	allowPostAccess := stats.Public || (authHeader != "" && id != ME) || viewerFollows || (authHeader != "" && id == me)
+	if isBlocked {
+		allowPostAccess = false
+	}
 
 	posts := make([]model.Post, 0)
 	if allowPostAccess {
