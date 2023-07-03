@@ -91,6 +91,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 		res, err := database.MakeRequest("MATCH (a:User {name: $id})-[:Subscriber]->(b:User {name: $to}) RETURN a;",
 			map[string]any{"id": me, "to": username})
 		if err != nil {
+			log.Printf("(getUser) cannot know if user follows: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
@@ -103,6 +104,8 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 			viewerFollows = true
 		}
 	}
+
+	log.Println(viewerFollows)
 
 	// Check if account is blocked
 	isBlocked, err := isAccountBlocked(me, username)
