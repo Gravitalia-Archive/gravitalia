@@ -114,7 +114,7 @@ func LastCommunityPost(id string) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User {name: $id}) WITH u.community as community MATCH (a:User {community: community})-[r]->(p:Post)-[:Show]->(t:Tag) WITH p, t, count(r) as connections ORDER BY connections DESC LIMIT 100 WITH p, t ORDER BY p.id DESC LIMIT 30 RETURN p.id, p.text, p.description, t.name;",
+			"MATCH (u:User {name: $id}) WITH u.community AS community MATCH (a:User {community: community})-[r]->(p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((u)-[:View]->(p)) WITH p, t, count(r) AS connections ORDER BY connections DESC LIMIT 100 WITH p, t ORDER BY p.id DESC LIMIT 30 RETURN p.id, p.text, p.description, t.name;",
 			map[string]any{"id": id})
 		if err != nil {
 			return nil, err
@@ -137,8 +137,7 @@ func LastLikedPost(id string) ([]model.Post, error) {
 	var list []model.Post
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
-		result, err := transaction.Run(ctx,
-			"MATCH (:User {name: $id})-[:Like]->(p:Post)-[:Show]->(t:Tag) WITH p, t ORDER BY p.id DESC LIMIT 1 WITH t MATCH (p:Post)-[:Show]->(t:Tag) WITH p, t ORDER BY p.id DESC LIMIT 10 RETURN p.id, p.text, p.description, t.name;",
+		result, err := transaction.Run(ctx, "MATCH (u:User {name: $id})-[:Like]->(p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((u)-[:View]->(p)) WITH p, t ORDER BY p.id DESC LIMIT 1 WITH t MATCH (p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((u)-[:View]->(p)) WITH p, t ORDER BY p.id DESC LIMIT 10 RETURN p.id, p.text, p.description, t.name;",
 			map[string]any{"id": id})
 		if err != nil {
 			return nil, err
