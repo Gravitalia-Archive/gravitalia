@@ -27,7 +27,8 @@ defmodule Notification.MixProject do
       {:plug_cowboy, "~> 2.6"},
       {:jason, "~> 1.4"},
       {:pubsub, "~> 1.1"},
-      {:uuid, "~> 1.1"}
+      {:uuid, "~> 1.1"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 end
