@@ -1,4 +1,8 @@
 defmodule Notification do
+    @moduledoc """
+    Notification allows access to Gravitalia's in-app notifications using several technologies
+    """
+
   use Application
   require Logger
 

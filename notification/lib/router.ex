@@ -1,4 +1,8 @@
 defmodule Notification.Router do
+  @moduledoc """
+  The router provides access to the right handler
+  """
+
   use Plug.Router
 
   plug(:match)

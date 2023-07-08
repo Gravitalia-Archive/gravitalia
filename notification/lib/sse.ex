@@ -1,4 +1,7 @@
 defmodule Notification.SSE do
+  @moduledoc """
+  SSE is an implementation of Server Sent Events technology used to send notifications
+  """
   @behaviour Plug
 
   import Plug.Conn
