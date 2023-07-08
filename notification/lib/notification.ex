@@ -1,6 +1,6 @@
 defmodule Notification do
-  import Logger
   use Application
+  require Logger
 
   def start(_type, _args) do
     children = [
@@ -8,7 +8,7 @@ defmodule Notification do
         scheme: :http,
         plug: Notification.Router,
         options: [
-          port: 4000
+          port: 8891
         ],
         protocol_options: [idle_timeout: :infinity]
       ),
@@ -19,7 +19,7 @@ defmodule Notification do
       {PubSub, []}
     ]
 
-    Logger.info("Server started at http://localhost:4000")
+    Logger.info("Server started at http://localhost:8891")
 
     opts = [strategy: :one_for_one, name: Notification.Application]
     Supervisor.start_link(children, opts)

@@ -5,12 +5,13 @@ defmodule Notification.SSE do
 
   def init(opts), do: opts
 
-  def call(conn, opts) do
+  def call(conn, _opts) do
     conn =
       conn
       |> put_resp_header("Access-Control-Allow-Origin", "*")
       |> put_resp_header("Access-Control-Allow-Methods", "GET")
       |> put_resp_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+      |> put_resp_header("Access-Control-Max-Age", "3600")
       |> put_resp_header("Cache-Control", "no-cache")
       |> put_resp_header("connection", "keep-alive")
       |> put_resp_header("Content-Type", "text/event-stream; charset=utf-8")
