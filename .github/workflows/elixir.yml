@@ -54,10 +54,13 @@ jobs:
           ${{ runner.os }}-mix-
 
     - name: Install dependencies
+      working-directory: ./notification
       run: mix deps.get
 
     - name: Compiles without warnings
+      working-directory: ./notification
       run: mix compile --warnings-as-errors
       
     - name: Run tests
+      working-directory: ./notification
       run: mix test
