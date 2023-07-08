@@ -28,6 +28,7 @@ defmodule Notification.MixProject do
       {:jason, "~> 1.4"},
       {:pubsub, "~> 1.1"},
       {:uuid, "~> 1.1"},
+      {:joken, "~> 2.6"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
