@@ -14,6 +14,7 @@ Gravitalia is separated into two folders to facilitate the [microservices](https
 | Rest | [readme](rest/README.md) | Gravitalia's main API that allows you to delete your account, obtain data, add photos... |
 | Recommendation | [readme](recommendation/README.md) | Recommendation system based on several algorithms and [Memgraph](https://memgraph.com/) |
 | Search | [readme](search/README.md) | Fast user search engine |
+| Notification | [readme](notification/README.md) | In-App Notification to manage comments, likes and subscription requests |
 
 ## Use the code
 To use the code efficiently, you can download the docker-compose.yml and type `docker-compose up`.
