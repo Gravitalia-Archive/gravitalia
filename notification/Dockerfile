@@ -5,7 +5,7 @@ WORKDIR /app
 RUN mix local.hex --force && \
     mix local.rebar --force
 
-COPY mix.exs mix.lock ./
+COPY mix.exs ./
 
 COPY lib lib/
 
