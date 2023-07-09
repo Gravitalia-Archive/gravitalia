@@ -1,4 +1,8 @@
 defmodule Notification do
+    @moduledoc """
+    Notification allows access to Gravitalia's in-app notifications using several technologies
+    """
+
   use Application
   require Logger
 
@@ -8,7 +12,7 @@ defmodule Notification do
         scheme: :http,
         plug: Notification.Router,
         options: [
-          port: 8891
+          port: Application.fetch_env!(:notification, :port)
         ],
         protocol_options: [idle_timeout: :infinity]
       ),
@@ -19,7 +23,7 @@ defmodule Notification do
       {PubSub, []}
     ]
 
-    Logger.info("Server started at http://localhost:8891")
+    Logger.info("Server started at http://localhost:#{Application.fetch_env!(:notification, :port)}")
 
     opts = [strategy: :one_for_one, name: Notification.Application]
     Supervisor.start_link(children, opts)

@@ -1,4 +1,8 @@
 defmodule Notification.Router do
+  @moduledoc """
+  The router provides access to the right handler
+  """
+
   use Plug.Router
 
   plug(:match)
@@ -10,6 +14,6 @@ defmodule Notification.Router do
   end
 
   match _ do
-    send_resp(conn, 404, "404")
+    send_resp(conn, 200, "OK")
   end
 end
