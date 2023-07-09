@@ -14,6 +14,6 @@ defmodule Notification.Router do
   end
 
   match _ do
-    send_resp(conn, 404, "404")
+    send_resp(conn, 200, "OK")
   end
 end
