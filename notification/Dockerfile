@@ -8,6 +8,7 @@ RUN mix local.hex --force && \
 COPY mix.exs ./
 
 COPY lib lib/
+COPY config config/
 
 RUN mix deps.get
 
