@@ -10,7 +10,7 @@ require (
 	github.com/openzipkin/zipkin-go v0.4.1
 	github.com/prometheus/client_golang v1.16.0
 	golang.org/x/text v0.10.0
-	google.golang.org/grpc v1.56.1
+	google.golang.org/grpc v1.56.2
 	google.golang.org/protobuf v1.31.0
 )
 
