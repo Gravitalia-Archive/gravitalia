@@ -8,6 +8,10 @@ defmodule Notification.SSE do
 
   def init(opts), do: opts
 
+  defp start_subscription(user_id) do
+    spawn(fn -> Notification.Nats.start_subscription(user_id) end)
+  end
+
   def call(conn, _opts) do
     conn =
       conn
@@ -35,6 +39,7 @@ defmodule Notification.SSE do
               |> send_chunked(200)
 
             PubSub.subscribe(self(), user_id)
+            start_subscription(user_id)
             sse_loop(conn, self())
         end
     end
