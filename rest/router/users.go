@@ -157,6 +157,12 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 // DeleteUser allows users to delete their account
 func DeleteUser(zipkinClient *zipkinhttp.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		// If method is OPTIONS send OK
+		if req.Method == http.MethodOptions {
+			Index(w, req)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		jsonEncoder := json.NewEncoder(w)
 
