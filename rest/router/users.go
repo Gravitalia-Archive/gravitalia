@@ -193,6 +193,7 @@ func DeleteUser(zipkinClient *zipkinhttp.Client) http.HandlerFunc {
 		_, err = database.MakeRequest("MATCH (u:User {name: $id}) OPTIONAL MATCH (u)-[:Wrote]->(p:Post) OPTIONAL MATCH (u)-[:Wrote]->(c:Comment) OPTIONAL MATCH (u)-[r]-() DETACH DELETE p, c, r, u;",
 			map[string]interface{}{"id": vanity})
 		if err != nil {
+			log.Printf("(DeleteUser) cannot delete user: %v", err)
 			w.WriteHeader(http.StatusUnauthorized)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
