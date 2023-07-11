@@ -235,9 +235,9 @@ func newPost(w http.ResponseWriter, req *http.Request) {
 		hash[i] = <-hashChan
 	}
 
-	id := helpers.Generate()
-	_, err = database.CreatePost(id, vanity, <-tag, getbody.Description, hash)
+	id, err := database.CreatePost(vanity, <-tag, getbody.Description, hash)
 	if err != nil {
+		log.Printf("(newPost) cannot create post in database: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
