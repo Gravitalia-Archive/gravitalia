@@ -47,6 +47,7 @@ func main() {
 	router.HandleFunc("/relation/", route.RelationHandler)
 	router.HandleFunc("/posts/", route.PostHandler)
 	router.HandleFunc("/comment/", route.Handler)
+	router.HandleFunc("/list/", route.ListHandler)
 	router.HandleFunc("/account/deletion", route.DeleteUser(client))
 	router.HandleFunc("/account/suspend", route.Suspend)
 	router.HandleFunc("/account/data", route.GetData)
