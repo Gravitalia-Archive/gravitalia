@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"github.com/Gravitalia/gravitalia/database"
 	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -67,10 +69,22 @@ func getList(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var list []any
+	ctx := context.Background()
 	if id == "Subscription" {
-		users, err := database.MakeRequest("MATCH (:User {name: $id})-[:Subscriber]->(u:User) RETURN u.name;",
-			map[string]any{"id": vanity})
-		list = users.([]any)
+		users, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+			result, err := transaction.Run(ctx,
+				"MATCH (:User {name: $id})-[:Subscriber]->(u:User) RETURN u.name;",
+				map[string]any{"id": vanity})
+			if err != nil {
+				return nil, err
+			}
+
+			if result.Next(ctx) {
+				return result.Record().Values, nil
+			}
+
+			return nil, result.Err()
+		})
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -80,10 +94,23 @@ func getList(w http.ResponseWriter, req *http.Request) {
 			})
 			return
 		}
+
+		list = users.([]any)
 	} else {
-		users, err := database.MakeRequest("MATCH (u:User)-[:"+id+"]->(:User {name: $id}) RETURN u.name;",
-			map[string]any{"id": vanity})
-		list = users.([]any)
+		users, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+			result, err := transaction.Run(ctx,
+				"MATCH (u:User)-[:"+id+"]->(:User {name: $id}) RETURN u.name;",
+				map[string]any{"id": vanity})
+			if err != nil {
+				return nil, err
+			}
+
+			if result.Next(ctx) {
+				return result.Record().Values, nil
+			}
+
+			return nil, result.Err()
+		})
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -93,6 +120,8 @@ func getList(w http.ResponseWriter, req *http.Request) {
 			})
 			return
 		}
+
+		list = users.([]any)
 	}
 
 	jsonEncoder.Encode(list)
