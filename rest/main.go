@@ -56,6 +56,7 @@ func main() {
 	// Init every helpers function and database variables
 	helpers.Init()
 	database.Init()
+	helpers.InitNATS()
 
 	log.Println("Server is starting on port", os.Getenv("PORT"))
 
