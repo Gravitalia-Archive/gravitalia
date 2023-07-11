@@ -120,7 +120,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 
 	// Remove subscription relations
 	if relation == "Block" {
-		_, err = database.MakeRequest("MATCH (:User {name: $id})-[r:Subscriber]-(:User {name: $to}) DELETE r;",
+		_, err = database.MakeRequest("(:User {name: $id})-[r:Subscriber]-(:User {name: $to}) DELETE r;",
 			map[string]any{"id": vanity, "to": getbody.Id})
 		if err != nil {
 			log.Printf("(Relation) Cannot remove subscription: %v", err)
@@ -133,8 +133,8 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	// Don't subscriber if user is blocked
 	if relation == "Subscriber" {
+		// Check if account is blocked
 		isBlocked, err := isAccountBlocked(vanity, getbody.Id)
 		if err != nil {
 			log.Printf("(Relation) Cannot know if users are blocked: %v", err)
@@ -149,13 +149,51 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 			})
 			return
 		}
+
+		// Check if account is private
+		stats, err := database.GetBasicProfile(getbody.Id)
+		if err != nil || stats.Suspended {
+			log.Printf("(Relation) cannot get targeted user: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: ErrorInvalidUser,
+			})
+			return
+		}
+
+		if !stats.Public {
+			res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:Request]->(b) DELETE r FOREACH (x IN CASE WHEN r IS NULL THEN [1] ELSE [] END |	CREATE (a)-[:Request]->(b)	) RETURN NOT(r IS NULL);",
+				map[string]any{"id": vanity, "to": getbody.Id})
+			if err != nil {
+				log.Printf("(Relation) Got an error : %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				jsonEncoder.Encode(model.RequestError{
+					Error:   true,
+					Message: ErrorWithDatabase,
+				})
+				return
+			}
+
+			if res.(bool) {
+				jsonEncoder.Encode(model.RequestError{
+					Error:   false,
+					Message: OkDeletedRelation,
+				})
+			} else {
+				jsonEncoder.Encode(model.RequestError{
+					Error:   false,
+					Message: OkAddedRequest,
+				})
+			}
+		}
 	}
 
 	// Create or delete asked relation
-	res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:"+content+"{"+identifier+": $to}) OPTIONAL MATCH (a)-[r:"+relation+"]->(b) DELETE r FOREACH (x IN CASE WHEN r IS NULL THEN [1] ELSE [] END | CREATE (a)-[:"+relation+"]->(b) ) RETURN NOT(r IS NULL);",
+	res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:"+content+"{"+identifier+": $to}) OPTIONAL MATCH (a)-[r:"+relation+"]->(b) DELETE r FOREACH (x IN CASE WHEN r IS NULL THEN [1] ELSE [] END |	CREATE (a)-[:"+relation+"]->(b)	) RETURN NOT(r IS NULL);",
 		map[string]any{"id": vanity, "to": getbody.Id})
-	if err != nil || res == nil {
-		log.Printf("(Relation) Cannot create or delete relation: %v", err)
+	if err != nil {
+		log.Printf("(Relation) Got an error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
