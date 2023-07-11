@@ -70,7 +70,7 @@ func getList(w http.ResponseWriter, req *http.Request) {
 
 	list := make([]any, 0)
 	ctx := context.Background()
-	if id == "Subscriber" {
+	if id == "Subscription" {
 		_, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 			result, err := transaction.Run(ctx,
 				"MATCH (:User {name: $id})-[:Subscriber]->(u:User) RETURN u.name;",
@@ -99,10 +99,6 @@ func getList(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	} else {
-		if id == "Subscription" {
-			id = "Subscriber"
-		}
-
 		_, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 			result, err := transaction.Run(ctx,
 				"MATCH (u:User)-[:"+id+"]->(:User {name: $id}) RETURN u.name;",
