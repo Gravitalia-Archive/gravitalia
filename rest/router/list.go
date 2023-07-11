@@ -3,7 +3,6 @@ package router
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -72,7 +71,7 @@ func getList(w http.ResponseWriter, req *http.Request) {
 	list := make([]any, 0)
 	ctx := context.Background()
 	if id == "Subscriber" {
-		users, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+		_, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 			result, err := transaction.Run(ctx,
 				"MATCH (:User {name: $id})-[:Subscriber]->(u:User) RETURN u.name;",
 				map[string]any{"id": vanity})
@@ -80,8 +79,12 @@ func getList(w http.ResponseWriter, req *http.Request) {
 				return nil, err
 			}
 
-			if result.Next(ctx) {
-				return result.Record().Values, nil
+			for result.Next(ctx) {
+				if result.Record().Values[0] == nil {
+					return list, nil
+				}
+
+				list = append(list, result.Record().Values[0].(string))
 			}
 
 			return nil, result.Err()
@@ -95,16 +98,12 @@ func getList(w http.ResponseWriter, req *http.Request) {
 			})
 			return
 		}
-
-		if users != nil {
-			list = users.([]any)
-		}
 	} else {
 		if id == "Subscription" {
 			id = "Subscriber"
 		}
 
-		users, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+		_, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 			result, err := transaction.Run(ctx,
 				"MATCH (u:User)-[:"+id+"]->(:User {name: $id}) RETURN u.name;",
 				map[string]any{"id": vanity})
@@ -112,9 +111,12 @@ func getList(w http.ResponseWriter, req *http.Request) {
 				return nil, err
 			}
 
-			fmt.Println(result)
-			if result.Next(ctx) {
-				return result.Record().Values, nil
+			for result.Next(ctx) {
+				if result.Record().Values[0] == nil {
+					return list, nil
+				}
+
+				list = append(list, result.Record().Values[0].(string))
 			}
 
 			return nil, result.Err()
@@ -127,11 +129,6 @@ func getList(w http.ResponseWriter, req *http.Request) {
 				Message: ErrorWithDatabase,
 			})
 			return
-		}
-
-		fmt.Println(users)
-		if users != nil {
-			list = users.([]any)
 		}
 	}
 
