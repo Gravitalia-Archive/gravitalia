@@ -68,7 +68,7 @@ func getList(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var list []any
+	list := make([]any, 0)
 	ctx := context.Background()
 	if id == "Subscription" {
 		users, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
@@ -95,7 +95,9 @@ func getList(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		list = users.([]any)
+		if users != nil {
+			list = users.([]any)
+		}
 	} else {
 		users, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 			result, err := transaction.Run(ctx,
@@ -121,7 +123,9 @@ func getList(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		list = users.([]any)
+		if users != nil {
+			list = users.([]any)
+		}
 	}
 
 	jsonEncoder.Encode(list)
