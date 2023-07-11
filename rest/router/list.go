@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -70,7 +71,7 @@ func getList(w http.ResponseWriter, req *http.Request) {
 
 	list := make([]any, 0)
 	ctx := context.Background()
-	if id == "Subscription" {
+	if id == "Subscriber" {
 		users, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 			result, err := transaction.Run(ctx,
 				"MATCH (:User {name: $id})-[:Subscriber]->(u:User) RETURN u.name;",
@@ -99,6 +100,10 @@ func getList(w http.ResponseWriter, req *http.Request) {
 			list = users.([]any)
 		}
 	} else {
+		if id == "Subscription" {
+			id = "Subscriber"
+		}
+
 		users, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 			result, err := transaction.Run(ctx,
 				"MATCH (u:User)-[:"+id+"]->(:User {name: $id}) RETURN u.name;",
@@ -107,6 +112,7 @@ func getList(w http.ResponseWriter, req *http.Request) {
 				return nil, err
 			}
 
+			fmt.Println(result)
 			if result.Next(ctx) {
 				return result.Record().Values, nil
 			}
@@ -123,6 +129,7 @@ func getList(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
+		fmt.Println(users)
 		if users != nil {
 			list = users.([]any)
 		}
