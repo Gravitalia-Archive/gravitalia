@@ -26,6 +26,7 @@ const (
 // Every OK message reponse
 const (
 	Ok                = "OK"
+	OkAddedRequest    = "Request added"
 	OkCreatedRelation = "Created relation"
 	OkDeletedRelation = "Deleted relation"
 )
