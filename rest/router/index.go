@@ -10,6 +10,7 @@ const ME = "@me"
 // Every possible error list
 const (
 	ErrorExceededMaximumImages = "Maximum images exceeded"
+	ErrorInvalidList           = "Invalid list"
 	ErrorInvalidPost           = "Invalid post"
 	ErrorInvalidPostAccess     = "No access to this post"
 	ErrorInternalServerError   = "Internal server error"
