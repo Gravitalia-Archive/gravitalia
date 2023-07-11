@@ -345,11 +345,13 @@ func GetReply(post_id string, id string, skip int, user string) ([]any, error) {
 }
 
 // CreatePost allows to create a new post into database
-func CreatePost(id string, user string, tag string, legend string, hash []string) (bool, error) {
+func CreatePost(user string, tag string, legend string, hash []string) (string, error) {
+	id := helpers.Generate()
+
 	_, err := MakeRequest("CREATE (p:Post {id: $id, text: $text, description: '', hash: $hash}) WITH p MERGE (t:Tag {name: $tag}) CREATE (p)-[r:Show]->(t) WITH p MATCH (u:User) WHERE u.name = $user CREATE (u)-[r:Create]->(p) RETURN type(r);", map[string]any{"id": id, "user": user, "tag": tag, "text": legend, "hash": hash})
 	if err != nil {
-		return false, err
+		return "", err
 	}
 
-	return true, nil
+	return id, nil
 }
