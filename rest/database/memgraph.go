@@ -181,7 +181,7 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 func UserRelation(id string, to string, relationType string) (bool, error) {
 	var content string
 	switch relationType {
-	case "Subscriber", "Block":
+	case "Subscriber", "Block", "Request":
 		content = "User"
 	case "Like", "View":
 		content = "Post"
@@ -211,7 +211,7 @@ func UserRelation(id string, to string, relationType string) (bool, error) {
 func UserUnRelation(id string, to string, relationType string) (bool, error) {
 	var content string
 	switch relationType {
-	case "Subscriber", "Block":
+	case "Subscriber", "Block", "Request":
 		content = "User"
 	case "Like", "View":
 		content = "Post"
