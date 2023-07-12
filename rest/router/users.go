@@ -270,6 +270,100 @@ func update(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
+// AcceptOrDecline permits to accept or decline the following request
+func AcceptOrDecline(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	jsonEncoder := json.NewEncoder(w)
+
+	choice := strings.TrimPrefix(req.URL.Path, "/request/")
+	if choice != "accept" && choice != "decline" {
+		w.WriteHeader(http.StatusBadRequest)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInvalidRelation,
+		})
+		return
+	}
+
+	vanity, err := helpers.CheckToken(req.Header.Get("Authorization"))
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInvalidToken,
+		})
+		return
+	}
+
+	if !req.URL.Query().Has("target") {
+		w.WriteHeader(http.StatusBadRequest)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInvalidUser,
+		})
+		return
+	}
+
+	// Check if relation exists
+	res, err := database.MakeRequest("MATCH (:User {name: $id})-[r:Request]->(:User {name: $to}) RETURN r;",
+		map[string]any{"id": vanity, "to": req.URL.Query().Get("target")})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorWithDatabase,
+		})
+		return
+	}
+
+	if res == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInvalidRelation,
+		})
+		return
+	}
+
+	if choice == "accept" {
+		// Delete old relation, and create new one
+		_, err = database.MakeRequest("MATCH (a:User {name: $id})-[r:Request]->(b:User {name: $to}) DELETE r CREATE (a)-[:Subscriber]->(b);",
+			map[string]any{"id": vanity, "to": req.URL.Query().Get("target")})
+
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: ErrorWithDatabase,
+			})
+			return
+		}
+
+		msg, _ := json.Marshal(
+			model.Message{
+				Type:      "subscription_request_acceptance",
+				From:      vanity,
+				To:        req.URL.Query().Get("target"),
+				Important: false,
+			},
+		)
+		helpers.Nats.Publish(req.URL.Query().Get("target"), msg)
+	} else {
+		// Delete old relation
+		_, err = database.MakeRequest("MATCH (a:User {name: $id})-[r:Request]->(b:User {name: $to}) DELETE r;",
+			map[string]any{"id": vanity, "to": req.URL.Query().Get("target")})
+
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonEncoder.Encode(model.RequestError{
+				Error:   true,
+				Message: ErrorWithDatabase,
+			})
+			return
+		}
+	}
+}
+
 // GetData returns a ZIP folder with two CSV files
 // containing user and liked/created posts data
 func GetData(w http.ResponseWriter, req *http.Request) {
