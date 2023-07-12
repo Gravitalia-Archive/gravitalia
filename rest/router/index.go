@@ -9,23 +9,25 @@ const ME = "@me"
 
 // Every possible error list
 const (
+	ErrorDataRequested         = "Data requested less than 24 hours ago"
 	ErrorExceededMaximumImages = "Maximum images exceeded"
 	ErrorInvalidList           = "Invalid list"
 	ErrorInvalidPost           = "Invalid post"
 	ErrorInvalidPostAccess     = "No access to this post"
 	ErrorInternalServerError   = "Internal server error"
 	ErrorInvalidToken          = "Invalid token"
-	ErrorUnableReadBody        = "Unable to read body"
 	ErrorInvalidBody           = "Invalid body"
 	ErrorInvalidRelation       = "Invalid relation"
 	ErrorInvalidQuery          = "Invalid query"
 	ErrorInvalidUser           = "Invalid user"
-	ErrorDataRequested         = "Data requested less than 24 hours ago"
+	ErrorMethodNotAllowed      = "Method not allowed"
+	ErrorUnableReadBody        = "Unable to read body"
 )
 
 // Every OK message reponse
 const (
 	Ok                = "OK"
+	OkAddedRequest    = "Request added"
 	OkCreatedRelation = "Created relation"
 	OkDeletedRelation = "Deleted relation"
 )

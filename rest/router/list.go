@@ -53,7 +53,7 @@ func getList(w http.ResponseWriter, req *http.Request) {
 
 	id := cases.Title(language.English, cases.Compact).String(strings.TrimPrefix(req.URL.Path, "/list/"))
 	if id == "" || func() bool {
-		for _, v := range []string{"Subscriber", "Subscription", "Block"} {
+		for _, v := range []string{"Subscriber", "Subscription", "Block", "Request"} {
 			if v == id {
 				return false
 			}

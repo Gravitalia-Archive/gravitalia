@@ -48,6 +48,7 @@ func main() {
 	router.HandleFunc("/posts/", route.PostHandler)
 	router.HandleFunc("/comment/", route.Handler)
 	router.HandleFunc("/list/", route.ListHandler)
+	router.HandleFunc("/request/", route.AcceptOrDecline)
 	router.HandleFunc("/account/deletion", route.DeleteUser(client))
 	router.HandleFunc("/account/suspend", route.Suspend)
 	router.HandleFunc("/account/data", route.GetData)
@@ -56,6 +57,7 @@ func main() {
 	// Init every helpers function and database variables
 	helpers.Init()
 	database.Init()
+	helpers.InitNATS()
 
 	log.Println("Server is starting on port", os.Getenv("PORT"))
 

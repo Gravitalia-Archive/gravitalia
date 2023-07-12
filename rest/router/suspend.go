@@ -20,16 +20,16 @@ func Suspend(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Method not allowed",
+			Message: ErrorMethodNotAllowed,
 		})
 		return
 	}
 
-	if req.Header.Get("authorization") == "" || req.Header.Get("authorization") != os.Getenv("GLOBAL_AUTH") {
+	if req.Header.Get("authorization") != os.Getenv("GLOBAL_AUTH") {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid token",
+			Message: ErrorInvalidToken,
 		})
 		return
 	}
@@ -38,7 +38,7 @@ func Suspend(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Invalid user",
+			Message: ErrorInvalidUser,
 		})
 		return
 	}
@@ -50,7 +50,7 @@ func Suspend(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
-				Message: "Invalid suspend query",
+				Message: ErrorInvalidQuery,
 			})
 			return
 		}
@@ -62,13 +62,13 @@ func Suspend(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
-			Message: "Internal server error",
+			Message: ErrorInternalServerError,
 		})
 		return
 	}
 
 	jsonEncoder.Encode(model.RequestError{
 		Error:   false,
-		Message: "OK",
+		Message: Ok,
 	})
 }
