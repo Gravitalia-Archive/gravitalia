@@ -1,14 +1,12 @@
 use meilisearch_sdk::search::SearchResults;
 use meilisearch_sdk::indexes::Index;
 use meilisearch_sdk::client::*;
-use once_cell::sync::OnceCell;
 use crate::model::User;
+use std::sync::Arc;
 use anyhow::Result;
 
-static INDEX: OnceCell<Index> = OnceCell::new();
-
 /// Init Meilisearch database and index
-pub async fn init() -> Result<()> {
+pub async fn init() -> Result<Index> {
     // Connect
     let client = Client::new(
         dotenv::var("MEILISEARCH_URL").unwrap_or_else(|_| "localhost:7700".to_string()),
@@ -21,32 +19,29 @@ pub async fn init() -> Result<()> {
     // Add sortable keys
     client.index("gravitalia").set_sortable_attributes(&["flags"]).await?;
 
-    // Set index
-    let _ = INDEX.set(client.index("gravitalia"));
-
-    Ok(())
+    Ok(client.index("gravitalia"))
 }
 
 /// Allows to add a document into the index
-pub async fn add_document(document: User) -> Result<()> {
+pub async fn add_document(document: User, meili: Arc<Index>) -> Result<()> {
     // Add document
-    INDEX.get().unwrap().add_or_replace(&[document], Some("vanity")).await?;
+    meili.add_or_replace(&[document], Some("vanity")).await?;
 
     Ok(())
 }
 
 /// Allows to delete a document into the index
-pub async fn delete_document(id: String) -> Result<()> {
+pub async fn delete_document(id: String, meili: Arc<Index>) -> Result<()> {
     // Add document
-    INDEX.get().unwrap().delete_document(id).await?;
+    meili.delete_document(id).await?;
 
     Ok(())
 }
 
 // Search into all documents
-pub async fn search(query: String, limit: u8) -> Result<SearchResults<User>> {
+pub async fn search(query: String, limit: u8, meili: Arc<Index>) -> Result<SearchResults<User>> {
     Ok(
-        INDEX.get().unwrap()
+        meili
         .search()
         .with_query(&query)
         .with_sort(&[
@@ -59,9 +54,9 @@ pub async fn search(query: String, limit: u8) -> Result<SearchResults<User>> {
 }
 
 // Get every documents in index
-pub async fn get_all() -> Result<SearchResults<User>> {
+pub async fn get_all(meili: Arc<Index>) -> Result<SearchResults<User>> {
     Ok(
-        INDEX.get().unwrap()
+        meili
         .search()
         .with_query("*")
         .execute::<User>()
