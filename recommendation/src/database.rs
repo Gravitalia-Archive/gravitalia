@@ -8,7 +8,7 @@ pub async fn init() -> Result<Arc<Graph>> {
     Ok(
         Arc::new(
             Graph::new(
-                dotenv::var("GRAPH_URL").unwrap_or("bolt://127.0.0.1:7687".to_string()),
+                dotenv::var("GRAPH_URL").unwrap_or_else(|_| "bolt://127.0.0.1:7687".to_string()),
                 dotenv::var("GRAPH_USERNAME").unwrap_or_default(),
                 dotenv::var("GRAPH_PASSWORD").unwrap_or_default()
             )
