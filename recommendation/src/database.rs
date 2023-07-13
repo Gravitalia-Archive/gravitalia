@@ -90,7 +90,7 @@ pub async fn jaccard_index(graph: Arc<Graph>, id: String, ids: Vec<String>) -> R
                     description: node.get::<String>("description").unwrap(),
                     author: row.get::<Node>("creator").unwrap().get::<String>("name").unwrap(),
                     hash: node.get::<Vec<String>>("hash").unwrap(),
-                    like: 0
+                    like: row.get::<i64>("numLikes").unwrap() as u32
                 }
             )
         }
