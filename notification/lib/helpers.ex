@@ -4,6 +4,7 @@ defmodule Notification.Helpers do
   """
 
   def check_token(token) do
+    IO.puts(Application.get_env(:notification, :jwt))
     {ok, claims} =
       Joken.Signer.verify(
         token,
