@@ -2,5 +2,6 @@ import Config
 
 config :notification,
   port: 8891,
-  jwt: System.get_env("RSA_PUBLIC_KEY"),
+  jwt:
+    "-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAwfk+8YiTLJ8OpjPdNpQ+\nHcUw17alffLBFHWJhGE2X8MDr9ZKMS9zxK1oy6PESDP7egFw0gglsILvCvP6PcHF\n3WInxhON01H6DR0AZxH+Hxr7N2TmEggKyODY3aiM6REZwf8lLR0n4FJsYsLOXRMe\nxAkURM2flC22DJy+HswU5izJGkwldhOXqNDiNTFrWxNruIlKs/qn5FLOqSTPhhD4\nIA12fxwKHkx0FynW8w+Z6CximTraVzLGRc1wiXVv+8NZzZjo2ngX5+6WuDy8UqWA\nLudIAG5bA8VSAaq2HFThYIUWMVfKTsc+O2F0wHTmkVpUSz2OjsrwUrA9J42DfbZZ\ntotLzXw3VgMOm3D99IUy+I3pU2M5HwCRsL+ssG34x/SDHqrQDemt3H3MtP/KPvfx\nxUQUejp5sgghbsdV5ZBFf8N8jjeU5A6bFxdtJxoOPorfDPNFfhjbsGps0LktTaqf\nIU5n7LVS+2wWOeaQFNJoUdCtIoEjRJtRf8c2mZOAJcfn17644e4iTL6guNRjnGko\nfiC7/02dG9lsgYVMdyp5smp4rsic6s/2CgGp+jNnJ49IMtOGT5Wl8Gv3fbvhg03B\nndYywDfQBYXYEUjOY6nhwpl5gD6SWPsNPlDiaiDsflJDCxTQ8zyFcGtPGElpKZNY\ndFIMFK7dyMYt3kPgNzVd670CAwEAAQ==\n-----END PUBLIC KEY-----",
   nats: %{host: ~c"nats", port: 4222}
