@@ -7,7 +7,8 @@ const QUERY_LAST_COMMUNITY_POST: &str = "MATCH (u:User {name: $id}) WITH u MATCH
 const QUERY_LAST_FOLLOWING_POST: &str = "MATCH (n:User {name: $id})-[:Subscriber]->(u:User) MATCH (u)-[:Create]->(p:Post) WHERE NOT EXISTS((n)-[:View]->(p)) WITH p ORDER BY p.id DESC LIMIT 20 RETURN p;";
 const QUERY_LAST_LIKED_POST: &str = "MATCH (u:User {name: $id})-[:Like]->(p:Post)-[:Show]->(t:Tag) WITH u, p, t ORDER BY p.id DESC LIMIT 1 WITH u, t MATCH (p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((u)-[:View]->(p)) WITH p ORDER BY p.id DESC LIMIT 10 RETURN p;";
 
-/// This route allows to search in all documents
+/// This route finds most revelant posts to the user and then
+/// send them
 pub async fn get(token: String, neo4j: std::sync::Arc<neo4rs::Graph>) -> Result<WithStatus<Json>> {
     let vanity = match crate::helpers::get_jwt(token) {
         Ok(claims) => {
