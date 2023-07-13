@@ -1,5 +1,6 @@
 use warp::{Filter, Reply, Rejection, http::StatusCode, reject::Reject};
 use std::error::Error;
+use std::sync::Arc;
 
 pub mod model;
 pub mod router;
@@ -40,11 +41,13 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, std::convert::In
     }), code))
 }
 
-
 #[tokio::main]
 async fn main() {
     // Init database
-    database::init().await.unwrap();
+    let meili = Arc::new(database::init().await.unwrap());
+    let meili1 = Arc::clone(&meili);
+    let meili2 = Arc::clone(&meili);
+    let meili3 = Arc::clone(&meili);
 
     // Create routes
     let routes = warp::path("search")
@@ -52,8 +55,9 @@ async fn main() {
                     .and(warp::post())
                     .and(warp::body::json())
                     .and(warp::header("authorization"))
-                    .and_then(|body: model::User, token: String| async move {
-                        match router::add::add(body, token).await {
+                    .and(warp::any().map(move || Arc::clone(&meili)))
+                    .and_then(|body: model::User, token: String, conn: Arc<meilisearch_sdk::indexes::Index>| async {
+                        match router::add::add(body, token, conn).await {
                             Ok(r) => {
                                 Ok(r)
                             },
@@ -68,8 +72,9 @@ async fn main() {
                     .and(warp::delete())
                     .and(warp::body::json())
                     .and(warp::header("authorization"))
-                    .and_then(|body: model::User, token: String| async move {
-                        match router::del::delete(body, token).await {
+                    .and(warp::any().map(move || Arc::clone(&meili1)))
+                    .and_then(|body: model::User, token: String, conn: Arc<meilisearch_sdk::indexes::Index>| async {
+                        match router::del::delete(body, token, conn).await {
                             Ok(r) => {
                                 Ok(r)
                             },
@@ -84,8 +89,9 @@ async fn main() {
                     .and(warp::path("research"))
                     .and(warp::get())
                     .and(warp::query::<model::QuerySearch>())
-                    .and_then(|query: model::QuerySearch| async move {
-                        match router::research::research(query).await {
+                    .and(warp::any().map(move || Arc::clone(&meili2)))
+                    .and_then(|query: model::QuerySearch, conn: Arc<meilisearch_sdk::indexes::Index>| async {
+                        match router::research::research(query, conn).await {
                             Ok(r) => {
                                 Ok(r)
                             },
@@ -100,8 +106,9 @@ async fn main() {
                     .and(warp::path("all_users"))
                     .and(warp::get())
                     .and(warp::header("authorization"))
-                    .and_then(|token: String| async move {
-                        match router::all::users(token).await {
+                    .and(warp::any().map(move || Arc::clone(&meili3)))
+                    .and_then(|token: String, conn: Arc<meilisearch_sdk::indexes::Index>| async {
+                        match router::all::users(token, conn).await {
                             Ok(r) => {
                                 Ok(r)
                             },
