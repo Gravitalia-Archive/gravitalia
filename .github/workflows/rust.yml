@@ -7,8 +7,12 @@ env:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        dir: ["./search", "./recommendation"]
     runs-on: ubuntu-latest
     name: Build
+    
     steps:
     - uses: actions/checkout@v3
     
@@ -26,9 +30,9 @@ jobs:
         restore-keys: linux-cargo
         
     - name: Build
-      working-directory: ./search
+      working-directory: ${{ matrix.dir }}
       run: cargo build
       
     - name: Test
-      working-directory: ./search
+      working-directory: ${{ matrix.dir }}
       run: cargo test
