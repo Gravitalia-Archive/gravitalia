@@ -23,4 +23,4 @@ COPY --from=builder /recommendation/target/release/recommendation /bin/recommend
 
 EXPOSE 8889/tcp
 ENTRYPOINT ["tini", "--"]
-CMD     /bin/recommendation
+CMD ["/bin/recommendation"]
