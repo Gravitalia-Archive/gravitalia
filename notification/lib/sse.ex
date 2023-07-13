@@ -12,6 +12,10 @@ defmodule Notification.SSE do
     spawn(fn -> Notification.Nats.start_subscription(user_id) end)
   end
 
+  defp hello(user_id) do
+    spawn(fn -> :timer.sleep(1000); PubSub.publish(user_id, {"hello"}) end)
+  end
+
   def call(conn, _opts) do
     conn =
       conn
@@ -40,6 +44,7 @@ defmodule Notification.SSE do
 
             PubSub.subscribe(self(), user_id)
             start_subscription(user_id)
+            hello(user_id)
             sse_loop(conn, self())
         end
     end
