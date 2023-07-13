@@ -3,7 +3,7 @@ use anyhow::Result;
 use crate::model;
 
 /// This route allows to create a new document
-pub async fn add(body: model::User, authorization: String) -> Result<WithStatus<Json>> {
+pub async fn add(body: model::User, authorization: String, meili: std::sync::Arc<meilisearch_sdk::indexes::Index>) -> Result<WithStatus<Json>> {
     // Check if token is valid
     if authorization != dotenv::var("GLOBAL_AUTH")? {
         return Ok(warp::reply::with_status(warp::reply::json(
@@ -15,7 +15,7 @@ pub async fn add(body: model::User, authorization: String) -> Result<WithStatus<
         StatusCode::UNAUTHORIZED))
     }
 
-    match crate::database::add_document(body).await {
+    match crate::database::add_document(body, meili).await {
         Ok(_) => {},
         Err(e) => {
             eprintln!("Adding error: {}", e);

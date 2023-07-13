@@ -3,7 +3,7 @@ use crate::database;
 use anyhow::Result;
 
 /// This route allows to create a new document
-pub async fn users(authorization: String) -> Result<WithStatus<Json>> {
+pub async fn users(authorization: String, meili: std::sync::Arc<meilisearch_sdk::indexes::Index>) -> Result<WithStatus<Json>> {
     // Check if token is valid
     if authorization != dotenv::var("GLOBAL_AUTH")? {
         return Ok(warp::reply::with_status(warp::reply::json(
@@ -17,7 +17,7 @@ pub async fn users(authorization: String) -> Result<WithStatus<Json>> {
 
     Ok(warp::reply::with_status(
         warp::reply::json(
-            &database::get_all()
+            &database::get_all(meili)
                 .await?
                 .hits
                 .into_iter()
