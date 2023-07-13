@@ -13,7 +13,7 @@ defmodule Notification.SSE do
   end
 
   defp hello(user_id) do
-    spawn(fn -> :timer.sleep(1000); PubSub.publish(user_id, {"hello"}) end)
+    spawn(fn -> :timer.sleep(10000); PubSub.publish(user_id, {"heartbeat"}); hello(user_id) end)
   end
 
   def call(conn, _opts) do
