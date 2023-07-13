@@ -48,11 +48,16 @@ pub async fn last_x_post(graph: Arc<Graph>, query: String, id: String) -> Result
         let mut id_list: Vec<String> = Vec::new();
 
         while let Ok(Some(row)) = result.next().await {
-            match row.get::<Node>("p").unwrap().get::<String>("id") {
-                Some(id) => {
-                    id_list.push(
-                        id
-                    )
+            match row.get::<Node>("p") {
+                Some(p) => {
+                    match p.get::<String>("id") {
+                        Some(id) => {
+                            id_list.push(
+                                id
+                            )
+                        },
+                        None => {}
+                    }
                 },
                 None => {}
             }
