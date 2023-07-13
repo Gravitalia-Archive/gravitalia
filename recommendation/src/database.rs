@@ -41,7 +41,7 @@ pub async fn community_detection(graph: Arc<Graph>) -> Result<()> {
 pub async fn last_x_post(graph: Arc<Graph>, query: String, id: String) -> Result<Vec<std::string::String>> {
     let ids = tokio::spawn(async move {
         let mut result = graph.execute(
-            neo_query(&query.as_str())
+            neo_query(query.as_str())
             .param("id", id)
         ).await.unwrap();
 
