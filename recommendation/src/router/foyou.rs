@@ -78,6 +78,10 @@ pub async fn get(token: String, neo4j: std::sync::Arc<neo4rs::Graph>) -> Result<
     posts.extend(following_post);
     posts.extend(community_post);
 
+    if posts.len() == 0 {
+        return Ok(warp::reply::with_status(warp::reply::json(&posts), StatusCode::OK));
+    }
+
     crate::helpers::remove_duplicates(&mut posts);
 
     Ok(
