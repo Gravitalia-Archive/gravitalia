@@ -49,6 +49,7 @@ async fn main() {
 
     // Init database
     let neo4j = database::init().await.unwrap();
+    let oneo4j = neo4j.clone();
 
     // Create routes
     let routes = warp::path("recommendation")
@@ -70,7 +71,7 @@ async fn main() {
 
     // Start CRON job
     tokio::task::spawn(async move {
-        helpers::hourly_cron(neo4j.clone()).await;
+        helpers::hourly_cron(oneo4j.clone()).await;
     });
 
     // Set port or use default
