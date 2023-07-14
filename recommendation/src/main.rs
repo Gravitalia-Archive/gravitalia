@@ -71,7 +71,7 @@ async fn main() {
     // Start CRON job
     tokio::task::spawn(async move {
         helpers::hourly_cron(neo4j.clone()).await;
-    })
+    });
 
     // Set port or use default
     let port: u16 = dotenv::var("RECOMMENDATION_PORT").unwrap_or_else(|_| "8889".to_string()).parse::<u16>().unwrap();
