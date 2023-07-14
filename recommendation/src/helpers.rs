@@ -28,7 +28,7 @@ pub fn remove_duplicates(vec: &mut Vec<String>) {
 }
 
 /// hourly_cron start a function that works every hour
-pub fn hourly_cron(graph: std::sync::Arc<neo4rs::Graph>) {
+pub async fn hourly_cron(graph: std::sync::Arc<neo4rs::Graph>) {
     tokio::task::spawn(async move {
         loop {
             let now = Utc::now();
