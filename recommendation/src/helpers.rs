@@ -1,7 +1,6 @@
 use jsonwebtoken::{decode, Algorithm, Validation, DecodingKey, TokenData};
 use chrono::{Duration as ChronoDuration, Utc, Timelike};
 use tokio::time::{self, Duration};
-use std::time::Duration;
 use anyhow::Result;
 
 /// Decode a JWT token and check if it is valid
