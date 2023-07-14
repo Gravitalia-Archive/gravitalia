@@ -50,9 +50,6 @@ async fn main() {
     // Init database
     let neo4j = database::init().await.unwrap();
 
-    // Start CRON job
-    helpers::hourly_cron(neo4j.clone()).await;
-
     // Create routes
     let routes = warp::path("recommendation")
     .and(warp::path("for_you_feed"))
@@ -70,6 +67,11 @@ async fn main() {
         }
     })
     .recover(handle_rejection);
+
+    // Start CRON job
+    tokio::task::spawn(async move {
+        helpers::hourly_cron(neo4j.clone()).await;
+    })
 
     // Set port or use default
     let port: u16 = dotenv::var("RECOMMENDATION_PORT").unwrap_or_else(|_| "8889".to_string()).parse::<u16>().unwrap();
