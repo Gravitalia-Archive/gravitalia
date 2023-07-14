@@ -1,5 +1,6 @@
 use jsonwebtoken::{decode, Algorithm, Validation, DecodingKey, TokenData};
 use chrono::{Duration as ChronoDuration, Utc, Timelike};
+use tokio::time::{self, Duration};
 use std::time::Duration;
 use anyhow::Result;
 
@@ -32,8 +33,12 @@ pub async fn hourly_cron(graph: std::sync::Arc<neo4rs::Graph>) {
     tokio::task::spawn(async move {
         loop {
             let now = Utc::now();
-            let time = (now.naive_utc().date().and_hms_opt(now.hour(), 0, 0).unwrap() + ChronoDuration::hours(1)).timestamp()-now.timestamp();
-            std::thread::sleep(Duration::from_secs(time as u64));
+            let time = (now.naive_utc().date().and_hms_opt(now.hour(), 0, 0).unwrap()
+                + ChronoDuration::hours(1))
+                .timestamp()
+                - now.timestamp();
+    
+            time::sleep(Duration::from_secs(time as u64)).await;
 
             println!("Starting PageRank and Community Detection...");
 
