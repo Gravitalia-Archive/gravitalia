@@ -44,6 +44,16 @@ func Init() {
 	if err != nil {
 		log.Printf("Cannot create constraints on Comment: %v", err)
 	}
+
+	_, err = Session.Run(ctx, "CREATE INDEX ON :User(name);", nil)
+	if err != nil {
+		log.Printf("Cannot create index on User: %v", err)
+	}
+
+	_, err = Session.Run(ctx, "CREATE INDEX ON :Post(id);", nil)
+	if err != nil {
+		log.Printf("Cannot create index on Post: %v", err)
+	}
 }
 
 // MakeRequest is a simple way to send a query
@@ -71,7 +81,7 @@ func MakeRequest(query string, params map[string]any) (any, error) {
 
 // CreateUser allows to create a new user into the graph database
 func CreateUser(id string) (bool, error) {
-	_, err := MakeRequest("CREATE (:User {name: $id, public: true, suspended: false});", map[string]any{"id": id})
+	_, err := MakeRequest("MERGE (:User {name: $id, public: true, suspended: false});", map[string]any{"id": id})
 	if err != nil {
 		return false, err
 	}
