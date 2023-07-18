@@ -29,7 +29,7 @@ defmodule Notification.SSE do
         |> put_resp_header("Content-Type", "text/plain; charset=utf-8")
         |> send_chunked(200)
 
-      chunk(conn, "OK")
+      chunk(conn, "OKl")
     end
 
     case get_token(conn) do
