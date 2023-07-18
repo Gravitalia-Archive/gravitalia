@@ -252,7 +252,7 @@ func addComment(w http.ResponseWriter, req *http.Request) {
 				Important: true,
 			},
 		)
-		helpers.Nats.Publish(post.Author, msg)
+		helpers.Publish(post.Author, msg)
 
 		// Create comment on database
 		comment_id, err = database.CommentPost(id, vanity, getbody.Content)

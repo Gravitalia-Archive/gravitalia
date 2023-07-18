@@ -348,7 +348,7 @@ func AcceptOrDecline(w http.ResponseWriter, req *http.Request) {
 				Important: false,
 			},
 		)
-		helpers.Nats.Publish(req.URL.Query().Get("target"), msg)
+		helpers.Publish(req.URL.Query().Get("target"), msg)
 	} else {
 		// Delete old relation
 		_, err = database.MakeRequest("MATCH (a:User {name: $id})-[r:Request]->(b:User {name: $to}) DELETE r;",

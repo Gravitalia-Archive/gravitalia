@@ -241,7 +241,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 					Important: true,
 				},
 			)
-			helpers.Nats.Publish(res.(string), msg)
+			helpers.Publish(res.(string), msg)
 		}
 
 		jsonEncoder.Encode(model.RequestError{
