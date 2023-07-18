@@ -32,7 +32,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	// Check valid relation
 	relation := cases.Title(language.English, cases.Compact).String(strings.TrimPrefix(req.URL.Path, "/relation/"))
 	if relation == "" || func() bool {
-		for _, v := range []string{"Like", "Subscriber", "Block", "Love"} {
+		for _, v := range []string{"Like", "Subscriber", "Block", "Love", "View"} {
 			if v == relation {
 				return false
 			}
@@ -181,6 +181,17 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 					Message: OkDeletedRelation,
 				})
 			} else {
+				// Notify target that requester wants to follow him
+				msg, _ := json.Marshal(
+					model.Message{
+						Type:      "request_subscription",
+						From:      vanity,
+						To:        req.URL.Query().Get("target"),
+						Important: true,
+					},
+				)
+				helpers.Nats.Publish(req.URL.Query().Get("target"), msg)
+
 				jsonEncoder.Encode(model.RequestError{
 					Error:   false,
 					Message: OkAddedRequest,
@@ -208,6 +219,31 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 			Message: OkDeletedRelation,
 		})
 	} else {
+		// Notify post author if a new like appears
+		if relation == "Like" {
+			res, _ := database.MakeRequest("MATCH (u:User)-[:Create]-(:Post {id: $id}) RETURN u.name;",
+				map[string]any{"id": getbody.Id})
+			if err != nil {
+				log.Printf("(Relation) Cannot get post creator: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				jsonEncoder.Encode(model.RequestError{
+					Error:   true,
+					Message: ErrorWithDatabase,
+				})
+				return
+			}
+
+			msg, _ := json.Marshal(
+				model.Message{
+					Type:      "post_like",
+					From:      vanity,
+					To:        getbody.Id,
+					Important: true,
+				},
+			)
+			helpers.Nats.Publish(res.(string), msg)
+		}
+
 		jsonEncoder.Encode(model.RequestError{
 			Error:   false,
 			Message: OkCreatedRelation,

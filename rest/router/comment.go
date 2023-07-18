@@ -53,6 +53,8 @@ func isAReply(id string) string {
 	return res.(string)
 }
 
+// Handler re-routes request to the right function
+// based on its method
 func Handler(w http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet {
 		getComment(w, req)
@@ -63,6 +65,7 @@ func Handler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// getComment returns the comment and replies
 func getComment(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
@@ -152,6 +155,7 @@ func getComment(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// addComment allows to create a new comment on a post
 func addComment(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
@@ -239,6 +243,18 @@ func addComment(w http.ResponseWriter, req *http.Request) {
 
 	var comment_id string
 	if getbody.ReplyTo == "" {
+		// Notify post creator that a user posted a comment
+		msg, _ := json.Marshal(
+			model.Message{
+				Type:      "request_subscription",
+				From:      vanity,
+				To:        id,
+				Important: true,
+			},
+		)
+		helpers.Nats.Publish(post.Author, msg)
+
+		// Create comment on database
 		comment_id, err = database.CommentPost(id, vanity, getbody.Content)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -288,6 +304,8 @@ func addComment(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
+// deleteComment allows to remove a comment from database and
+// all associated replies
 func deleteComment(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)

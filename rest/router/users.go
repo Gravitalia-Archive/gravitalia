@@ -339,9 +339,10 @@ func AcceptOrDecline(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
+		// Notify requester of the acceptance
 		msg, _ := json.Marshal(
 			model.Message{
-				Type:      "subscription_request_acceptance",
+				Type:      "subscription_accepted",
 				From:      vanity,
 				To:        req.URL.Query().Get("target"),
 				Important: false,
