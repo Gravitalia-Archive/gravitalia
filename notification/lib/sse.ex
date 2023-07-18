@@ -23,15 +23,6 @@ defmodule Notification.SSE do
       |> put_resp_header("Cache-Control", "no-cache")
       |> put_resp_header("connection", "keep-alive")
 
-    if conn.method() == "OPTIONS" do
-      conn =
-        conn
-        |> put_resp_header("Content-Type", "text/plain; charset=utf-8")
-        |> send_chunked(200)
-
-      chunk(conn, "OKl")
-    end
-
     case get_token(conn) do
       nil ->
         unauthorized(conn)
