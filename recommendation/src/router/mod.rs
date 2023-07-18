@@ -3,3 +3,4 @@ const CANNOT_GET_LATEST_LIKED_POSTS: &str = "Cannot get the latest posts from th
 const INVALID_TOKEN: &str = "Invalid token";
 
 pub mod foyou;
+pub mod most_liked;

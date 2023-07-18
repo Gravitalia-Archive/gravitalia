@@ -49,9 +49,10 @@ async fn main() {
 
     // Init database
     let neo4j = database::init().await.unwrap();
+    let neo4j_liked = database::init().await.unwrap().clone();
 
     // Start CRON job
-    helpers::hourly_cron(neo4j.clone()).await;
+    helpers::hourly_cron(neo4j.clone());
 
     // Create routes
     let routes = warp::path("recommendation")
@@ -69,6 +70,22 @@ async fn main() {
             }
         }
     })
+    .or(
+        warp::path("recommendation")
+        .and(warp::path("most_liked"))
+        .and(warp::get())
+        .and(warp::any().map(move || neo4j_liked.clone()))
+        .and_then(|neo4j: std::sync::Arc<neo4rs::Graph>| async move {
+            match router::most_liked::get(neo4j).await {
+                Ok(r) => {
+                    Ok(r)
+                },
+                Err(_) => {
+                    Err(warp::reject::custom(UnknownError))
+                }
+            }
+        })
+    )
     .recover(handle_rejection);
 
     // Set port or use default
