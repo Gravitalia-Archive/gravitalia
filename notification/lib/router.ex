@@ -14,6 +14,13 @@ defmodule Notification.Router do
   end
 
   match _ do
+    conn =
+      conn
+      |> put_resp_header("Access-Control-Allow-Origin", "https://www.gravitalia.com")
+      |> put_resp_header("Access-Control-Allow-Credentials", "true")
+      |> put_resp_header("Access-Control-Allow-Methods", "GET")
+      |> put_resp_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
     send_resp(conn, 200, "OK")
   end
 end
