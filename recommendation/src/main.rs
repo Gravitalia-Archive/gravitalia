@@ -52,7 +52,7 @@ async fn main() {
     let neo4j_liked = database::init().await.unwrap().clone();
 
     // Start CRON job
-    helpers::hourly_cron(neo4j.clone());
+    helpers::hourly_cron(neo4j.clone()).await;
 
     // Create routes
     let routes = warp::path("recommendation")
