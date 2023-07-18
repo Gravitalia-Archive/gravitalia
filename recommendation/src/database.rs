@@ -100,3 +100,33 @@ pub async fn jaccard_index(graph: Arc<Graph>, id: String, ids: Vec<String>) -> R
 
     Ok(ids.await?)
 }
+
+/// get_most_liked_posts returns the twenty most liked
+/// posts on the database
+pub async fn get_most_liked_posts(graph: Arc<Graph>) -> Result<Vec<Post>> {
+    let ids = tokio::spawn(async move {
+        let mut result = graph.execute(
+            neo_query("MATCH (:User)-[r:Like]->(p:Post) WITH p, count(DISTINCT r) as numLikes ORDER BY numLikes DESC LIMIT 20 RETURN p, numLikes;")
+        ).await.unwrap();
+
+        let mut post_list: Vec<Post> = Vec::new();
+
+        while let Ok(Some(row)) = result.next().await {
+            let node = row.get::<Node>("p").unwrap();
+
+            post_list.push(
+                Post {
+                    id: node.get::<String>("id").unwrap(),
+                    description: node.get::<String>("description").unwrap(),
+                    author: row.get::<Node>("creator").unwrap().get::<String>("name").unwrap(),
+                    hash: node.get::<Vec<String>>("hash").unwrap(),
+                    like: row.get::<i64>("numLikes").unwrap() as u32
+                }
+            )
+        }
+
+        post_list
+    });
+
+    Ok(ids.await?)
+}
