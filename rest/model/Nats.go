@@ -7,7 +7,7 @@ type Message struct {
 	// Author vanity (such as realhinome)
 	From string `json:"from"`
 	// Must be User vanity or post ID
-	To string `json:"string"`
+	To string `json:"to"`
 	// Set true to send push notification
 	Important bool `json:"important"`
 }
