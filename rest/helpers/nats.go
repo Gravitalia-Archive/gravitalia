@@ -11,7 +11,13 @@ var Nats *nats.Conn
 
 // InitNATS starts a new NATS instance
 func InitNATS() {
-	Nats, _ = nats.Connect(os.Getenv("NATS_URL"))
+	connection, err := nats.Connect(os.Getenv("NATS_URL"))
+
+	if err != nil {
+		log.Printf("Cannot connect to %v: %v", os.Getenv("NATS_URL"), err)
+	}
+
+	Nats = connection
 }
 
 // Publish allows publishing message on NATS
