@@ -19,7 +19,7 @@ defmodule Notification.Router do
       |> put_resp_header("Access-Control-Allow-Origin", "https://www.gravitalia.com")
       |> put_resp_header("Access-Control-Allow-Credentials", "true")
       |> put_resp_header("Access-Control-Allow-Methods", "GET")
-      |> put_resp_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+      |> put_resp_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Cache-Control")
 
     send_resp(conn, 200, "OK")
   end
