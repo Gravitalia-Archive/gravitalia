@@ -67,8 +67,8 @@ jobs:
     - name: Build the Docker image
       working-directory: ./search
       run: |
-            docker build . --tag ghcr.io/gravitalia/recommendation:latest
-            docker push ghcr.io/gravitalia/recommendation:latest
+            docker build . --tag ghcr.io/gravitalia/search:latest
+            docker push ghcr.io/gravitalia/search:latest
             
   notification:
     name: Publish Notification
