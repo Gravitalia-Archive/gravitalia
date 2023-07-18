@@ -2,7 +2,7 @@ use warp::{reply::{WithStatus, Json}, http::StatusCode};
 use crate::database;
 use anyhow::Result;
 
-/// This route allows to search in all documents
+/// This route allows to get the most liked posts
 pub async fn get(neo4j: std::sync::Arc<neo4rs::Graph>) -> Result<WithStatus<Json>> {
     Ok(
         warp::reply::with_status(
