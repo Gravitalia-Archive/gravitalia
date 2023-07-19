@@ -6,4 +6,5 @@ type Profile struct {
 	Following uint32 `json:"following"`
 	Public    bool   `json:"public"`
 	Suspended bool   `json:"suspended"`
+	PostCount uint16 `json:"post_count"`
 }
