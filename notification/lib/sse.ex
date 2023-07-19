@@ -13,7 +13,7 @@ defmodule Notification.SSE do
   end
 
   defp heartbeat(user_id) do
-    spawn(fn -> :timer.sleep(90000); PubSub.publish(user_id, {%{type: "PING"}}); heartbeat(user_id) end)
+    spawn(fn -> :timer.sleep(90000); PubSub.publish(user_id, {Jason.encode!(%{type: "PING"})}); heartbeat(user_id) end)
   end
 
   def call(conn, _opts) do
@@ -75,7 +75,7 @@ defmodule Notification.SSE do
   end
 
   defp format_sse_message(message) do
-    "id: #{UUID.uuid1()}\nevent: message\ndata: #{Jason.encode!(message)}\n\n"
+    "id: #{UUID.uuid1()}\nevent: message\ndata: #{message}\n\n"
   end
 
   defp get_token(conn) do
