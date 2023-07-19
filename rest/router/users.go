@@ -272,12 +272,6 @@ func update(w http.ResponseWriter, req *http.Request) {
 
 // AcceptOrDecline permits to accept or decline the following request
 func AcceptOrDecline(w http.ResponseWriter, req *http.Request) {
-	// If method is OPTIONS send OK
-	if req.Method == http.MethodOptions {
-		Index(w, req)
-		return
-	}
-	
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
@@ -312,7 +306,7 @@ func AcceptOrDecline(w http.ResponseWriter, req *http.Request) {
 
 	// Check if relation exists
 	res, err := database.MakeRequest("MATCH (:User {name: $id})-[r:Request]->(:User {name: $to}) RETURN r;",
-		map[string]any{"id": vanity, "to": req.URL.Query().Get("target")})
+		map[string]any{"id": req.URL.Query().Get("target"), "to": vanity})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
@@ -334,7 +328,7 @@ func AcceptOrDecline(w http.ResponseWriter, req *http.Request) {
 	if choice == "accept" {
 		// Delete old relation, and create new one
 		_, err = database.MakeRequest("MATCH (a:User {name: $id})-[r:Request]->(b:User {name: $to}) DELETE r CREATE (a)-[:Subscriber]->(b);",
-			map[string]any{"id": vanity, "to": req.URL.Query().Get("target")})
+			map[string]any{"id": req.URL.Query().Get("target"), "to": vanity})
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -358,7 +352,7 @@ func AcceptOrDecline(w http.ResponseWriter, req *http.Request) {
 	} else {
 		// Delete old relation
 		_, err = database.MakeRequest("MATCH (a:User {name: $id})-[r:Request]->(b:User {name: $to}) DELETE r;",
-			map[string]any{"id": vanity, "to": req.URL.Query().Get("target")})
+			map[string]any{"id": req.URL.Query().Get("target"), "to": vanity})
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

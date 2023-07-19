@@ -244,15 +244,17 @@ func addComment(w http.ResponseWriter, req *http.Request) {
 	var comment_id string
 	if getbody.ReplyTo == "" {
 		// Notify post creator that a user posted a comment
-		msg, _ := json.Marshal(
-			model.Message{
-				Type:      "request_subscription",
-				From:      vanity,
-				To:        id,
-				Important: true,
-			},
-		)
-		helpers.Publish(post.Author, msg)
+		if vanity != post.Author {
+			msg, _ := json.Marshal(
+				model.Message{
+					Type:      "post_comment",
+					From:      vanity,
+					To:        id,
+					Important: true,
+				},
+			)
+			helpers.Publish(post.Author, msg)
+		}
 
 		// Create comment on database
 		comment_id, err = database.CommentPost(id, vanity, getbody.Content)

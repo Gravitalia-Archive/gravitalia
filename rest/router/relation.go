@@ -233,15 +233,17 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			msg, _ := json.Marshal(
-				model.Message{
-					Type:      "post_like",
-					From:      vanity,
-					To:        getbody.Id,
-					Important: true,
-				},
-			)
-			helpers.Publish(res.(string), msg)
+			if vanity != res.(string) {
+				msg, _ := json.Marshal(
+					model.Message{
+						Type:      "post_like",
+						From:      vanity,
+						To:        getbody.Id,
+						Important: true,
+					},
+				)
+				helpers.Publish(res.(string), msg)
+			}
 		}
 
 		jsonEncoder.Encode(model.RequestError{
