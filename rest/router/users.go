@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/Gravitalia/gravitalia/database"
 	"github.com/Gravitalia/gravitalia/helpers"
@@ -414,14 +413,14 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check if data has been recuperated 48 hours ago
-	/*if val, _ := database.Mem.Get(vanity + "-data"); val != nil && string(val.Value) == "ok" {
+	if val, _ := database.Mem.Get(vanity + "-data"); val != nil && string(val.Value) == "ok" {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
 			Message: ErrorDataRequested,
 		})
 		return
-	}*/
+	}
 
 	// Create CSV with user data
 	userFilePath, err := database.MakeRequest("WITH \"MATCH (u:User {name: '"+vanity+"'}) RETURN u.name as vanity, u.community as community_id, u.rank as rank, u.public as is_public, u.suspended as is_suspended;\" as query CALL export_util.csv_query(query, \"/var/lib/memgraph/user.csv\", True) YIELD file_path RETURN file_path;",
@@ -451,44 +450,27 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 	zipBuffer := new(bytes.Buffer)
 	zipWriter := zip.NewWriter(zipBuffer)
 
-	// Create a WaitGroup to synchronize goroutines
-	var wg sync.WaitGroup
+	// Add user CSV file to the ZIP
+	if err := addFileToZip(zipWriter, userFilePath.(string), "user.csv"); err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInternalServerError,
+		})
+		return
+	}
 
-	// Parallelize CSV file operations
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-
-		// Add user CSV file to the ZIP
-		if err := addFileToZip(zipWriter, userFilePath.(string), "user.csv", &wg); err != nil {
-			log.Println("(getData)", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			jsonEncoder.Encode(model.RequestError{
-				Error:   true,
-				Message: ErrorInternalServerError,
-			})
-			return
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-
-		// Add post CSV file to the ZIP
-		if err := addFileToZip(zipWriter, postFilePath.(string), "posts.csv", &wg); err != nil {
-			log.Println("(getData)", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			jsonEncoder.Encode(model.RequestError{
-				Error:   true,
-				Message: ErrorInternalServerError,
-			})
-			return
-		}
-	}()
-
-	// Wait for goroutines to finish
-	wg.Wait()
+	// Add post CSV file to the ZIP
+	if err := addFileToZip(zipWriter, postFilePath.(string), "posts.csv"); err != nil {
+		log.Println("(getData)", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonEncoder.Encode(model.RequestError{
+			Error:   true,
+			Message: ErrorInternalServerError,
+		})
+		return
+	}
 
 	// Close the ZIP writer
 	err = zipWriter.Close()
@@ -522,14 +504,7 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func addFileToZip(zipWriter *zip.Writer, filePath, fileName string, wg *sync.WaitGroup) error {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("(addFileToZip)", r)
-		}
-		wg.Done()
-	}()
-
+func addFileToZip(zipWriter *zip.Writer, filePath, fileName string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
