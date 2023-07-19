@@ -413,7 +413,7 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Check if data has been recuperated 24 hours ago
+	// Check if data has been recuperated 48 hours ago
 	/*if val, _ := database.Mem.Get(vanity + "-data"); val != nil && string(val.Value) == "ok" {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
@@ -461,7 +461,7 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 		defer wg.Done()
 
 		// Add user CSV file to the ZIP
-		if err := addFileToZip(zipWriter, userFilePath.(string), "user.csv"); err != nil {
+		if err := addFileToZip(zipWriter, userFilePath.(string), "user.csv", &wg); err != nil {
 			log.Println("(getData)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
@@ -476,7 +476,7 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 		defer wg.Done()
 
 		// Add post CSV file to the ZIP
-		if err := addFileToZip(zipWriter, postFilePath.(string), "posts.csv"); err != nil {
+		if err := addFileToZip(zipWriter, postFilePath.(string), "posts.csv", &wg); err != nil {
 			log.Println("(getData)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
@@ -502,8 +502,8 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Add 24h cooldown
-	database.Set(vanity+"-data", "ok", 86400)
+	// Add 48h cooldown
+	database.Set(vanity+"-data", "ok", 172800)
 
 	// Set the appropriate headers for the ZIP file
 	w.Header().Set("Content-Type", "application/zip")
@@ -522,7 +522,9 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func addFileToZip(zipWriter *zip.Writer, filePath, fileName string) error {
+func addFileToZip(zipWriter *zip.Writer, filePath, fileName string, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
