@@ -13,7 +13,7 @@ defmodule Notification.SSE do
   end
 
   defp heartbeat(user_id) do
-    spawn(fn -> :timer.sleep(90000); PubSub.publish(user_id, {"heartbeat"}); heartbeat(user_id) end)
+    spawn(fn -> :timer.sleep(90000); PubSub.publish(user_id, {%{type: "PING"}}); heartbeat(user_id) end)
   end
 
   def call(conn, _opts) do
