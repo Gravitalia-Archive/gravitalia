@@ -413,14 +413,14 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check if data has been recuperated 48 hours ago
-	if val, _ := database.Mem.Get(vanity + "-data"); val != nil && string(val.Value) == "ok" {
+	/*if val, _ := database.Mem.Get(vanity + "-data"); val != nil && string(val.Value) == "ok" {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
 			Message: ErrorDataRequested,
 		})
 		return
-	}
+	}*/
 
 	// Create CSV with user data
 	userFilePath, err := database.MakeRequest("WITH \"MATCH (u:User {name: '"+vanity+"'}) RETURN u.name as vanity, u.community as community_id, u.rank as rank, u.public as is_public, u.suspended as is_suspended;\" as query CALL export_util.csv_query(query, \"/var/lib/memgraph/user.csv\", True) YIELD file_path RETURN file_path;",
