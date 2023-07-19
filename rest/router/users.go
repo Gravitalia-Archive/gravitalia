@@ -523,7 +523,12 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 }
 
 func addFileToZip(zipWriter *zip.Writer, filePath, fileName string, wg *sync.WaitGroup) error {
-	defer wg.Done()
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("(addFileToZip)", r)
+		}
+		wg.Done()
+	}()
 
 	file, err := os.Open(filePath)
 	if err != nil {
