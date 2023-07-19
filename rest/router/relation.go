@@ -180,6 +180,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 					Error:   false,
 					Message: OkDeletedRelation,
 				})
+				return
 			} else {
 				// Notify target that requester wants to follow him
 				msg, _ := json.Marshal(
@@ -196,6 +197,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 					Error:   false,
 					Message: OkAddedRequest,
 				})
+				return
 			}
 		}
 	}
