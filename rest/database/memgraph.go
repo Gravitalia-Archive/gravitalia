@@ -100,7 +100,7 @@ func GetProfile(id string) (model.Profile, error) {
 			profile.Following = uint32(result.Record().Values[1].(int64))
 			profile.Public = result.Record().Values[2].(bool)
 			profile.Suspended = result.Record().Values[3].(bool)
-			profile.PostCount = result.Record().Values[4].(uint16)
+			profile.PostCount = uint16(result.Record().Values[4].(int64))
 		}
 
 		return profile, nil
