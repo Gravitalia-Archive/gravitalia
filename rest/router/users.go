@@ -272,6 +272,12 @@ func update(w http.ResponseWriter, req *http.Request) {
 
 // AcceptOrDecline permits to accept or decline the following request
 func AcceptOrDecline(w http.ResponseWriter, req *http.Request) {
+	// If method is OPTIONS send OK
+	if req.Method == http.MethodOptions {
+		Index(w, req)
+		return
+	}
+	
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
