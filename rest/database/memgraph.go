@@ -44,16 +44,6 @@ func Init() {
 	if err != nil {
 		log.Printf("Cannot create constraints on Comment: %v", err)
 	}
-
-	_, err = Session.Run(ctx, "CREATE INDEX ON :User(name);", nil)
-	if err != nil {
-		log.Printf("Cannot create index on User: %v", err)
-	}
-
-	_, err = Session.Run(ctx, "CREATE INDEX ON :Post(id);", nil)
-	if err != nil {
-		log.Printf("Cannot create index on Post: %v", err)
-	}
 }
 
 // MakeRequest is a simple way to send a query
@@ -81,7 +71,7 @@ func MakeRequest(query string, params map[string]any) (any, error) {
 
 // CreateUser allows to create a new user into the graph database
 func CreateUser(id string) (bool, error) {
-	_, err := MakeRequest("MERGE (:User {name: $id, public: true, suspended: false});", map[string]any{"id": id})
+	_, err := MakeRequest("CREATE (:User {name: $id, public: true, suspended: false});", map[string]any{"id": id})
 	if err != nil {
 		return false, err
 	}
@@ -95,7 +85,7 @@ func GetProfile(id string) (model.Profile, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (n:User {name: $id}) OPTIONAL MATCH (n)-[:Subscriber]->(d:User) WITH n, count(d) as following OPTIONAL MATCH (u:User)-[:Subscriber]->(n) WITH n, following, count(u) as followers RETURN followers, following, n.public, n.suspended;",
+			"MATCH (n:User {name: $id}) OPTIONAL MATCH (n)-[:Subscriber]->(d:User) WITH n, count(d) as following OPTIONAL MATCH (u:User)-[:Subscriber]->(n) WITH n, following, count(u) as followers OPTIONAL MATCH (n)-[:Create]-(p:Post) WITH n, followers, following, COUNT(DISTINCT p) as postNumber RETURN followers, following, n.public, n.suspended, postNumber;",
 			map[string]any{"id": id})
 		if err != nil {
 			return nil, err
@@ -110,6 +100,7 @@ func GetProfile(id string) (model.Profile, error) {
 			profile.Following = uint32(result.Record().Values[1].(int64))
 			profile.Public = result.Record().Values[2].(bool)
 			profile.Suspended = result.Record().Values[3].(bool)
+			profile.PostCount = result.Record().Values[4].(uint16)
 		}
 
 		return profile, nil
