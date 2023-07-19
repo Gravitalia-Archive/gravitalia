@@ -92,7 +92,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if getbody.Id == "" {
+	if getbody.Id == "" || vanity == getbody.Id {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
@@ -187,11 +187,11 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 					model.Message{
 						Type:      "request_subscription",
 						From:      vanity,
-						To:        req.URL.Query().Get("target"),
+						To:        getbody.Id,
 						Important: true,
 					},
 				)
-				helpers.Nats.Publish(req.URL.Query().Get("target"), msg)
+				helpers.Nats.Publish(getbody.Id, msg)
 
 				jsonEncoder.Encode(model.RequestError{
 					Error:   false,
