@@ -120,7 +120,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 
 	// Remove subscription relations
 	if relation == "Block" {
-		_, err = database.MakeRequest("(:User {name: $id})-[r:Subscriber]-(:User {name: $to}) DELETE r;",
+		_, err = database.MakeRequest("MATCH (:User {name: $id})-[r:Subscriber]-(:User {name: $to}) DELETE r;",
 			map[string]any{"id": vanity, "to": getbody.Id})
 		if err != nil {
 			log.Printf("(Relation) Cannot remove subscription: %v", err)
