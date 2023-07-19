@@ -143,6 +143,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 		CanAccessPost    bool         `json:"access_post"`
 		FollowedByViewer bool         `json:"followed_by_viewer"`
 		Posts            []model.Post `json:"posts"`
+		PostCount        uint16       `json:"post_count"`
 	}{
 		Followers:        stats.Followers,
 		Following:        stats.Following,
@@ -151,6 +152,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 		CanAccessPost:    allowPostAccess,
 		FollowedByViewer: viewerFollows,
 		Posts:            posts,
+		PostCount:        stats.PostCount,
 	})
 }
 
