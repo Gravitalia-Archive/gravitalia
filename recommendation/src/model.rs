@@ -14,7 +14,8 @@ pub struct Post {
 	pub description: String,
 	pub author: String,
     pub hash: Vec<String>,
-    pub like: u32
+    pub like: u32,
+    pub me_liked: bool
 }
 
 // Claims defines JWT struct
