@@ -355,7 +355,7 @@ func GetReply(post_id string, id string, skip int, user string) ([]any, error) {
 func CreatePost(user string, tag string, legend string, hash []string) (string, error) {
 	id := helpers.Generate()
 
-	_, err := MakeRequest("CREATE (p:Post {id: $id, text: $text, description: ''}) FOREACH (	hash IN $hashArray | MERGE (m:Media {type: 'image, hash: hash}) CREATE (p)-[:CONTAINS]->(m)	) WITH p MERGE (t:Tag {name: $tag}) CREATE (p)-[r:SHOW]->(t) WITH p MATCH (u:User {name: $user}) CREATE (u)-[r:CREATE]->(p);",
+	_, err := MakeRequest("CREATE (p:Post {id: $id, text: $text, description: ''}) FOREACH (	hash IN $hashArray | MERGE (m:Media {type: 'image', hash: hash}) CREATE (p)-[:CONTAINS]->(m)	) WITH p MERGE (t:Tag {name: $tag}) CREATE (p)-[r:SHOW]->(t) WITH p MATCH (u:User {name: $user}) CREATE (u)-[r:CREATE]->(p);",
 		map[string]any{"id": id, "user": user, "tag": tag, "text": legend, "hash": hash})
 	if err != nil {
 		return "", err
