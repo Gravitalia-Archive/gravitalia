@@ -28,7 +28,7 @@ defmodule Notification.SSE do
       |> put_resp_header("Access-Control-Allow-Origin", "https://www.gravitalia.com")
       |> put_resp_header("Access-Control-Allow-Credentials", "true")
       |> put_resp_header("Access-Control-Allow-Methods", "GET")
-      |> put_resp_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Cache-Control")
+      |> put_resp_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Cache-Control, last-event-id")
       |> put_resp_header("Access-Control-Max-Age", "3600")
       |> put_resp_header("Cache-Control", "no-cache")
       |> put_resp_header("connection", "keep-alive")
