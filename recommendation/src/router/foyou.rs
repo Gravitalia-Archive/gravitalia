@@ -3,9 +3,9 @@ use crate::database;
 use anyhow::Result;
 use crate::model;
 
-const QUERY_LAST_COMMUNITY_POST: &str = "MATCH (u:User {name: $id}) WITH u MATCH (a:User {community: u.community})-[r]->(p:Post) WHERE NOT EXISTS((u)-[:View]->(p)) WITH p, count(r) as connections ORDER BY connections DESC LIMIT 100 WITH p ORDER BY p.id DESC LIMIT 30 RETURN p;";
-const QUERY_LAST_FOLLOWING_POST: &str = "MATCH (n:User {name: $id})-[:Subscriber]->(u:User) MATCH (u)-[:Create]->(p:Post) WHERE NOT EXISTS((n)-[:View]->(p)) WITH p ORDER BY p.id DESC LIMIT 20 RETURN p;";
-const QUERY_LAST_LIKED_POST: &str = "MATCH (u:User {name: $id})-[:Like]->(p:Post)-[:Show]->(t:Tag) WITH u, p, t ORDER BY p.id DESC LIMIT 1 WITH u, t MATCH (p:Post)-[:Show]->(t:Tag) WHERE NOT EXISTS((u)-[:View]->(p)) WITH p ORDER BY p.id DESC LIMIT 10 RETURN p;";
+const QUERY_LAST_COMMUNITY_POST: &str = "MATCH (u:User {name: $id}) WITH u MATCH (a:User {community: u.community})-[r]->(p:Post) WHERE NOT EXISTS((u)-[:VIEW]->(p)) WITH p, count(r) as connections ORDER BY connections DESC LIMIT 100 WITH p ORDER BY p.id DESC LIMIT 30 RETURN p;";
+const QUERY_LAST_FOLLOWING_POST: &str = "MATCH (n:User {name: $id})-[:SUBSCRIBER]->(u:User) MATCH (u)-[:CREATE]->(p:Post) WHERE NOT EXISTS((n)-[:VIEW]->(p)) WITH p ORDER BY p.id DESC LIMIT 20 RETURN p;";
+const QUERY_LAST_LIKED_POST: &str = "MATCH (u:User {name: $id})-[:LIKE]->(p:Post)-[:SHOW]->(t:Tag) WITH u, p, t ORDER BY p.id DESC LIMIT 1 WITH u, t MATCH (p:Post)-[:SHOW]->(t:Tag) WHERE NOT EXISTS((u)-[:VIEW]->(p)) WITH p ORDER BY p.id DESC LIMIT 10 RETURN p;";
 
 /// This route finds most revelant posts to the user and then
 /// send them
