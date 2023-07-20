@@ -13,7 +13,13 @@ defmodule Notification.SSE do
   end
 
   defp heartbeat(user_id) do
-    spawn(fn -> :timer.sleep(90000); PubSub.publish(user_id, {Jason.encode!(%{type: "PING"})}); heartbeat(user_id) end)
+    spawn(fn -> heartbeat_loop(user_id) end)
+  end
+
+  defp heartbeat_loop(user_id) do
+    :timer.sleep(50_000)
+    PubSub.publish(user_id, {Jason.encode!(%{type: "PING"})})
+    heartbeat_loop(user_id)
   end
 
   def call(conn, _opts) do
@@ -45,6 +51,9 @@ defmodule Notification.SSE do
             PubSub.subscribe(self(), user_id)
             start_subscription(user_id)
             heartbeat(user_id)
+
+            Process.send_after(self(), :stop_heartbeat, 10 * 60 * 1000)
+
             sse_loop(conn, self())
         end
     end
@@ -68,6 +77,9 @@ defmodule Notification.SSE do
 
       {:DOWN, _reference, :process, ^pid, _type} ->
         nil
+
+      :stop_heartbeat ->
+        Process.exit(pid, :normal)
 
       _other ->
         sse_loop(conn, pid)
