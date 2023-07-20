@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"github.com/Gravitalia/gravitalia/grpc"
 	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 const NEW = "new"
@@ -270,9 +272,24 @@ func deletePost(w http.ResponseWriter, req *http.Request) {
 
 	id := strings.TrimPrefix(req.URL.Path, "/posts/")
 
-	_, err := database.MakeRequest("MATCH (p:Post {id: $to})<-[:CREATE]-(:User {name: $id}) OPTIONAL MATCH (c:Comment)-[:COMMENT]-(p) WITH p, c DETACH DELETE p, c;", map[string]any{"id": vanity, "to": id})
-	if err != nil {
-		log.Println(err)
+	ctx := context.Background()
+	if _, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
+		result, err := transaction.Run(ctx,
+			"MATCH (p:Post {id: $to})<-[:CREATE]-(:User {name: $id}) MATCH (p)-[:CONTAINS]-(m:Media) OPTIONAL MATCH (c:Comment)-[:COMMENT]-(p) DETACH DELETE p, c WITH m OPTIONAL MATCH (m:Media)-[r:CONTAINS]-(:Post) WITH m, COUNT(r) as count WHERE count = 0 WITH m, m.hash as hash DETACH DELETE m RETURN hash;",
+			map[string]any{"id": vanity, "to": id})
+		if err != nil {
+			return nil, err
+		}
+
+		for result.Next(ctx) {
+			_, err := grpc.DeleteImage(result.Record().Values[0].(string))
+
+			return nil, err
+		}
+
+		return nil, result.Err()
+	}); err != nil {
+		log.Printf("(deletePost) %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
