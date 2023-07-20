@@ -74,7 +74,7 @@ pub async fn last_x_post(graph: Arc<Graph>, query: String, id: String) -> Result
 pub async fn jaccard_index(graph: Arc<Graph>, id: String, ids: Vec<String>) -> Result<Vec<Post>> {
     let ids = tokio::spawn(async move {
         let mut result = graph.execute(
-            neo_query("MATCH (u:User {name: $id})-[:LIKE]->(p:Post) WITH u, p LIMIT 10 MATCH (l:Post) WHERE l.id IN $list WITH l, p ORDER BY p.id DESC WITH collect(l) as posts, collect(p) as likedPosts CALL node_similarity.jaccard_pairwise(posts, likedPosts) YIELD node1, node2, similarity WITH node1, similarity ORDER BY similarity DESC LIMIT 15 OPTIONAL MATCH (a:User)-[:LIKE]->(node1) WITH node1, count(DISTINCT a) as numLikes MATCH (creator:User)-[:CREATE]-(node1)-[:CONTAINS]-(m:Media) WITH node1, numLikes, creator, m OPTIONAL MATCH (:User {name: $id})-[r:LIKE]-(node1) RETURN node1 as p, collect(m.hash) as hashes, numLikes, creator, CASE WHEN r IS NULL THEN false ELSE true END;")
+            neo_query("MATCH (u:User {name: $id})-[:LIKE]->(p:Post) WITH u, p LIMIT 10 MATCH (l:Post) WHERE l.id IN $list WITH l, p ORDER BY p.id DESC WITH collect(l) as posts, collect(p) as likedPosts CALL node_similarity.jaccard_pairwise(posts, likedPosts) YIELD node1, node2, similarity WITH node1, similarity ORDER BY similarity DESC LIMIT 15 OPTIONAL MATCH (a:User)-[:LIKE]->(node1) WITH node1, count(DISTINCT a) as numLikes MATCH (creator:User)-[:CREATE]-(node1)-[:CONTAINS]-(m:Media) WITH node1, numLikes, creator, m OPTIONAL MATCH (:User {name: $id})-[r:LIKE]-(node1) RETURN node1.id as id, node1.description as description, collect(m.hash) as hashes, numLikes, creator, CASE WHEN r IS NULL THEN false ELSE true END as meLiked;")
             .param("id", id)
             .param("list", ids)
         ).await.unwrap();
@@ -82,15 +82,14 @@ pub async fn jaccard_index(graph: Arc<Graph>, id: String, ids: Vec<String>) -> R
         let mut post_list: Vec<Post> = Vec::new();
 
         while let Ok(Some(row)) = result.next().await {
-            let node = row.get::<Node>("p").unwrap();
-
             post_list.push(
                 Post {
-                    id: node.get::<String>("id").unwrap(),
-                    description: node.get::<String>("description").unwrap(),
+                    id: row.get::<String>("id").unwrap(),
+                    description: row.get::<String>("description").unwrap(),
                     author: row.get::<Node>("creator").unwrap().get::<String>("name").unwrap(),
                     hash: row.get::<Vec<String>>("hashes").unwrap(),
-                    like: row.get::<i64>("numLikes").unwrap() as u32
+                    like: row.get::<i64>("numLikes").unwrap() as u32,
+                    me_liked: row.get::<bool>("meLiked").unwrap()
                 }
             )
         }
@@ -120,7 +119,8 @@ pub async fn get_most_liked_posts(graph: Arc<Graph>) -> Result<Vec<Post>> {
                     description: node.get::<String>("description").unwrap(),
                     author: row.get::<String>("author").unwrap(),
                     hash: node.get::<Vec<String>>("hash").unwrap(),
-                    like: row.get::<i64>("numLikes").unwrap() as u32
+                    like: row.get::<i64>("numLikes").unwrap() as u32,
+                    me_liked: false
                 }
             )
         }
