@@ -39,3 +39,32 @@ func UploadImage(image []byte) (string, error) {
 
 	return r.GetMessage(), nil
 }
+
+// DeleteImage allows to delete an image with its
+// hash. Returns the error message (may be empty)
+func DeleteImage(hash string) (string, error) {
+	// Set up a connection to the server
+	conn, err := grpc.Dial(os.Getenv("SPINOZA_ADDRESS"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return "", err
+	}
+
+	defer conn.Close()
+	c := proto.NewSpinozaClient(conn)
+
+	// Contact the server and print out its response
+	// If no response in 2 seconds, cancel it
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	// Make request
+	r, err := c.Delete(ctx, &proto.DeleteRequest{
+		Hash: hash,
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	return r.GetMessage(), nil
+}
