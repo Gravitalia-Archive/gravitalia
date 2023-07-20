@@ -324,7 +324,7 @@ func deleteComment(w http.ResponseWriter, req *http.Request) {
 
 	id := strings.TrimPrefix(req.URL.Path, "/comment/")
 
-	_, err := database.MakeRequest("MATCH (c:Comment {id: $to})<-[:Wrote]-(u:User {name: $id}) OPTIONAL MATCH (r:Comment)-[:Reply]-(c) WITH c, r DETACH DELETE r, c;", map[string]any{"id": vanity, "to": id})
+	_, err := database.MakeRequest("MATCH (c:Comment {id: $to})<-[:WROTE]-(u:User {name: $id}) OPTIONAL MATCH (r:Comment)-[:REPLY]-(c) WITH c, r DETACH DELETE r, c;", map[string]any{"id": vanity, "to": id})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{

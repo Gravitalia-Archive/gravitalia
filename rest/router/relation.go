@@ -103,11 +103,11 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 
 	var content string
 	switch relation {
-	case "Subscriber", "Block", "Request":
+	case "SUBSCRIBER", "BLOCK", "REQUEST":
 		content = "User"
-	case "Like", "View":
+	case "LIKE", "VIEW":
 		content = "Post"
-	case "Love":
+	case "LOVE":
 		content = "Comment"
 	}
 
@@ -120,7 +120,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 
 	// Remove subscription relations
 	if relation == "Block" {
-		_, err = database.MakeRequest("MATCH (:User {name: $id})-[r:Subscriber]-(:User {name: $to}) DELETE r;",
+		_, err = database.MakeRequest("MATCH (:User {name: $id})-[r:SUBSCRIBER]-(:User {name: $to}) DELETE r;",
 			map[string]any{"id": vanity, "to": getbody.Id})
 		if err != nil {
 			log.Printf("(Relation) Cannot remove subscription: %v", err)
@@ -133,7 +133,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	if relation == "Subscriber" {
+	if relation == "SUBSCRIBER" {
 		// Check if account is blocked
 		isBlocked, err := isAccountBlocked(vanity, getbody.Id)
 		if err != nil {
@@ -163,7 +163,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		}
 
 		if !stats.Public {
-			res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:Request]->(b) DELETE r FOREACH (x IN CASE WHEN r IS NULL THEN [1] ELSE [] END |	CREATE (a)-[:Request]->(b)	) RETURN NOT(r IS NULL);",
+			res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:REQUEST]->(b) DELETE r FOREACH (x IN CASE WHEN r IS NULL THEN [1] ELSE [] END |	CREATE (a)-[:REQUEST]->(b)	) RETURN NOT(r IS NULL);",
 				map[string]any{"id": vanity, "to": getbody.Id})
 			if err != nil {
 				log.Printf("(Relation) Got an error : %v", err)
@@ -223,7 +223,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	} else {
 		// Notify post author if a new like appears
 		if relation == "Like" {
-			res, _ := database.MakeRequest("MATCH (u:User)-[:Create]-(:Post {id: $id}) RETURN u.name;",
+			res, _ := database.MakeRequest("MATCH (u:User)-[:CREATE]-(:Post {id: $id}) RETURN u.name;",
 				map[string]any{"id": getbody.Id})
 			if err != nil {
 				log.Printf("(Relation) Cannot get post creator: %v", err)
@@ -309,11 +309,11 @@ func Exists(w http.ResponseWriter, req *http.Request) {
 
 	var content string
 	switch relation {
-	case "Subscriber", "Block", "Request":
+	case "SUBSCRIBER", "BLOCK", "REQUEST":
 		content = "User"
-	case "Like", "View":
+	case "LIKE", "VIEW":
 		content = "Post"
-	case "Love":
+	case "LOVE":
 		content = "Comment"
 	}
 

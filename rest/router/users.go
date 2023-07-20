@@ -23,7 +23,7 @@ func isAccountBlocked(id string, to string) (bool, error) {
 		return false, nil
 	}
 
-	res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:Block]-(b) RETURN NOT(r IS NULL);",
+	res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:BLOCK]-(b) RETURN NOT(r IS NULL);",
 		map[string]any{"id": id, "to": to})
 	if err != nil {
 		log.Printf("(isAccountBlocked) %v", err)
@@ -89,7 +89,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	// Check if viewer is following user
 	var viewerFollows bool
 	if authHeader != "" {
-		res, err := database.MakeRequest("MATCH (:User {name: $id})-[r:Subscriber]->(:User {name: $to}) RETURN NOT(r IS NULL);",
+		res, err := database.MakeRequest("MATCH (:User {name: $id})-[r:SUBSCRIBER]->(:User {name: $to}) RETURN NOT(r IS NULL);",
 			map[string]any{"id": me, "to": username})
 		if err != nil {
 			log.Printf("(getUser) cannot know if user follows: %v", err)
@@ -191,7 +191,7 @@ func DeleteUser(zipkinClient *zipkinhttp.Client) http.HandlerFunc {
 			}
 		}
 
-		_, err = database.MakeRequest("MATCH (u:User {name: $id}) OPTIONAL MATCH (u)-[:Wrote]->(p:Post) OPTIONAL MATCH (u)-[:Wrote]->(c:Comment) OPTIONAL MATCH (u)-[r]-() DETACH DELETE p, c, r, u;",
+		_, err = database.MakeRequest("MATCH (u:User {name: $id}) OPTIONAL MATCH (u)-[:WROTE]->(p:Post) OPTIONAL MATCH (u)-[:WROTE]->(c:Comment) OPTIONAL MATCH (u)-[r]-() DETACH DELETE p, c, r, u;",
 			map[string]interface{}{"id": vanity})
 		if err != nil {
 			log.Printf("(DeleteUser) cannot delete user: %v", err)
@@ -312,7 +312,7 @@ func AcceptOrDecline(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check if relation exists
-	res, err := database.MakeRequest("MATCH (:User {name: $id})-[r:Request]->(:User {name: $to}) RETURN r;",
+	res, err := database.MakeRequest("MATCH (:User {name: $id})-[r:REQUEST]->(:User {name: $to}) RETURN r;",
 		map[string]any{"id": req.URL.Query().Get("target"), "to": vanity})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -334,7 +334,7 @@ func AcceptOrDecline(w http.ResponseWriter, req *http.Request) {
 
 	if choice == "accept" {
 		// Delete old relation, and create new one
-		_, err = database.MakeRequest("MATCH (a:User {name: $id})-[r:Request]->(b:User {name: $to}) DELETE r CREATE (a)-[:Subscriber]->(b);",
+		_, err = database.MakeRequest("MATCH (a:User {name: $id})-[r:REQUEST]->(b:User {name: $to}) DELETE r CREATE (a)-[:SUBSCRIBER]->(b);",
 			map[string]any{"id": req.URL.Query().Get("target"), "to": vanity})
 
 		if err != nil {
@@ -358,7 +358,7 @@ func AcceptOrDecline(w http.ResponseWriter, req *http.Request) {
 		helpers.Publish(req.URL.Query().Get("target"), msg)
 	} else {
 		// Delete old relation
-		_, err = database.MakeRequest("MATCH (a:User {name: $id})-[r:Request]->(b:User {name: $to}) DELETE r;",
+		_, err = database.MakeRequest("MATCH (a:User {name: $id})-[r:REQUEST]->(b:User {name: $to}) DELETE r;",
 			map[string]any{"id": req.URL.Query().Get("target"), "to": vanity})
 
 		if err != nil {
@@ -435,7 +435,7 @@ func GetData(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Create CSV with posts data
-	postFilePath, err := database.MakeRequest("WITH \"OPTIONAL MATCH (u:User {name: '"+vanity+"'})-[r]-(p:Post)-[:Show]-(t:Tag) WHERE type(r) = 'Create' OR type(r) = 'Like' OPTIONAL MATCH (p)-[:Comment]-(c:Comment)-[:Wrote]-(u) OPTIONAL MATCH (u)-[l:Like]->(p) WITH DISTINCT p, r, t, count(DISTINCT l) as likes, collect({id: c.id, text: c.text, timestamp: c.timestamp }) as my_comment RETURN p.id as id, p.text as description, p.hash as images, p.description as automatic_legend, t.name as autmatic_tag, likes, type(r) as relation, my_comment\" as query CALL export_util.csv_query(query, \"/var/lib/memgraph/posts.csv\", True) YIELD file_path RETURN file_path;",
+	postFilePath, err := database.MakeRequest("WITH \"MATCH (u:User {name: '"+vanity+"'})-[r]-(p:Post)-[:CONTAINS]->(m:Media) MATCH (p)-[:SHOW]->(t:Tag) WHERE type(r) = 'CREATE' OR type(r) = 'LIKE' OR type(r) = 'VIEW' OPTIONAL MATCH (p)-[:COMMENT]-(c:Comment)-[:WROTE]-(u) OPTIONAL MATCH (u)-[l:LIKE]->(p) WITH DISTINCT p, m, r, t, count(DISTINCT l) as likes, collect({id: c.id, text: c.text, timestamp: c.timestamp }) as my_comment RETURN p.id as id, p.text as description, [] as images, p.description as automatic_legend, t.name as automatic_tag, likes, type(r) as relation, my_comment\" as query CALL export_util.csv_query(query, \"/var/lib/memgraph/posts.csv\", True) YIELD file_path RETURN file_path;",
 		map[string]interface{}{"id": vanity})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

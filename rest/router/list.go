@@ -10,8 +10,6 @@ import (
 	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 // ListHandler routes to the right function
@@ -51,9 +49,9 @@ func getList(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	id := cases.Title(language.English, cases.Compact).String(strings.TrimPrefix(req.URL.Path, "/list/"))
+	id := strings.ToUpper(strings.TrimPrefix(req.URL.Path, "/list/"))
 	if id == "" || func() bool {
-		for _, v := range []string{"Subscriber", "Subscription", "Block", "Request"} {
+		for _, v := range []string{"SUBSCRIBER", "SUBSCRIPTION", "BLOCK", "REQUEST"} {
 			if v == id {
 				return false
 			}
@@ -73,7 +71,7 @@ func getList(w http.ResponseWriter, req *http.Request) {
 	if id == "Subscription" {
 		_, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 			result, err := transaction.Run(ctx,
-				"MATCH (:User {name: $id})-[:Subscriber]->(u:User) RETURN u.name;",
+				"MATCH (:User {name: $id})-[:SUBSCRIBER]->(u:User) RETURN u.name;",
 				map[string]any{"id": vanity})
 			if err != nil {
 				return nil, err

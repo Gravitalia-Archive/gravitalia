@@ -117,7 +117,7 @@ func getPost(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Set post as viewed
-	go database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:Post {id: $to}) MERGE (a)-[:View]->(b);",
+	go database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:Post {id: $to}) MERGE (a)-[:VIEW]->(b);",
 		map[string]any{"id": vanity, "to": post.Id})
 
 	jsonEncoder.Encode(post)
@@ -270,7 +270,7 @@ func deletePost(w http.ResponseWriter, req *http.Request) {
 
 	id := strings.TrimPrefix(req.URL.Path, "/posts/")
 
-	_, err := database.MakeRequest("MATCH (p:Post {id: $to})<-[:Create]-(:User {name: $id}) OPTIONAL MATCH (c:Comment)-[:Comment]-(p) WITH p, c DETACH DELETE p, c;", map[string]any{"id": vanity, "to": id})
+	_, err := database.MakeRequest("MATCH (p:Post {id: $to})<-[:CREATE]-(:User {name: $id}) OPTIONAL MATCH (c:Comment)-[:COMMENT]-(p) WITH p, c DETACH DELETE p, c;", map[string]any{"id": vanity, "to": id})
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

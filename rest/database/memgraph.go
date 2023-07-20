@@ -35,14 +35,19 @@ func Init() {
 		log.Printf("Cannot create constraints on Post: %v", err)
 	}
 
-	_, err = Session.Run(ctx, "CREATE CONSTRAINT ON (t:Tag) ASSERT t.name IS UNIQUE;", nil)
-	if err != nil {
-		log.Printf("Cannot create constraints on Tag: %v", err)
-	}
-
 	_, err = Session.Run(ctx, "CREATE CONSTRAINT ON (c:Comment) ASSERT c.id IS UNIQUE;", nil)
 	if err != nil {
 		log.Printf("Cannot create constraints on Comment: %v", err)
+	}
+
+	_, err = Session.Run(ctx, "CREATE INDEX ON :User(name);", nil)
+	if err != nil {
+		log.Printf("Cannot create index on User: %v", err)
+	}
+
+	_, err = Session.Run(ctx, "CREATE INDEX ON :Post(id);", nil)
+	if err != nil {
+		log.Printf("Cannot create index on Post: %v", err)
 	}
 }
 
@@ -71,7 +76,8 @@ func MakeRequest(query string, params map[string]any) (any, error) {
 
 // CreateUser allows to create a new user into the graph database
 func CreateUser(id string) (bool, error) {
-	_, err := MakeRequest("CREATE (:User {name: $id, public: true, suspended: false});", map[string]any{"id": id})
+	_, err := MakeRequest("MERGE (:User {name: $id, public: true, suspended: false});",
+		map[string]any{"id": id})
 	if err != nil {
 		return false, err
 	}
@@ -85,7 +91,7 @@ func GetProfile(id string) (model.Profile, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (n:User {name: $id}) OPTIONAL MATCH (n)-[:Subscriber]->(d:User) WITH n, count(d) as following OPTIONAL MATCH (u:User)-[:Subscriber]->(n) WITH n, following, count(u) as followers OPTIONAL MATCH (n)-[:Create]-(p:Post) WITH n, followers, following, COUNT(DISTINCT p) as postNumber RETURN followers, following, n.public, n.suspended, postNumber;",
+			"MATCH (n:User {name: $id}) OPTIONAL MATCH (n)-[:SUBSCRIBER]->(d:User) OPTIONAL MATCH (n)<-[:SUBSCRIBER]-(u:User) OPTIONAL MATCH (n)-[:CREATE]->(p:Post) RETURN count(DISTINCT u) AS followers, count(DISTINCT d) AS following, n.public, n.suspended, count(DISTINCT p) as postNumber;",
 			map[string]any{"id": id})
 		if err != nil {
 			return nil, err
@@ -145,7 +151,7 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (u:User {name: $id})-[:Create]->(p:Post) OPTIONAL MATCH (p)<-[l:Like]-(liker:User) RETURN p.id as id, p.hash, p.description, p.text, count(DISTINCT l) ORDER BY id DESC SKIP 0 LIMIT 12;",
+			"MATCH (u:User {name: $id})-[:CREATE]->(p:Post)-[:CONTAINS]->(m:Media) OPTIONAL MATCH (p)<-[l:LIKE]-(liker:User) RETURN p.id as id, collect(m.hash), p.description, p.text, count(DISTINCT l) ORDER BY id DESC SKIP 0 LIMIT 12;",
 			map[string]any{"id": id, "skip": skip * 12})
 		if err != nil {
 			return nil, err
@@ -182,11 +188,11 @@ func GetUserPost(id string, skip uint8) ([]model.Post, error) {
 func UserRelation(id string, to string, relationType string) (bool, error) {
 	var content string
 	switch relationType {
-	case "Subscriber", "Block", "Request":
+	case "SUBSCRIBER", "BLOCK", "REQUEST":
 		content = "User"
-	case "Like", "View":
+	case "LIKE", "VIEW":
 		content = "Post"
-	case "Love":
+	case "LOVE":
 		content = "Comment"
 	}
 
@@ -197,7 +203,7 @@ func UserRelation(id string, to string, relationType string) (bool, error) {
 		identifier = "id"
 	}
 
-	res, err := MakeRequest("MATCH (a:User {name: $id}) MATCH (b:"+content+"{"+identifier+": $to) OPTIONAL MATCH (a)-[r:"+relationType+"]->(b) DELETE r WITH a, b, count(r) AS deleted_count WHERE deleted_count = 0 CREATE (a)-[:Block]->(b)",
+	res, err := MakeRequest("MATCH (a:User {name: $id}) MATCH (b:"+content+"{"+identifier+": $to) OPTIONAL MATCH (a)-[r:"+relationType+"]->(b) DELETE r WITH a, b, count(r) AS deleted_count WHERE deleted_count = 0 CREATE (a)-[:BLOCK]->(b)",
 		map[string]any{"id": id, "to": to})
 	if err != nil {
 		return false, err
@@ -212,11 +218,11 @@ func UserRelation(id string, to string, relationType string) (bool, error) {
 func UserUnRelation(id string, to string, relationType string) (bool, error) {
 	var content string
 	switch relationType {
-	case "Subscriber", "Block", "Request":
+	case "SUBSCRIBER", "BLOCK", "REQUEST":
 		content = "User"
-	case "Like", "View":
+	case "LIKE", "VIEW":
 		content = "Post"
-	case "Love":
+	case "LOVE":
 		content = "Comment"
 	}
 
@@ -242,7 +248,7 @@ func GetPost(id string, user string) (model.Post, error) {
 
 	_, err := Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 		result, err := transaction.Run(ctx,
-			"MATCH (author:User)-[:Create]->(p:Post {id: $id}) OPTIONAL MATCH (:User)-[l:Like]->(p) WITH author, p, count(DISTINCT l) as numLikes OPTIONAL MATCH (p)<-[:Comment]-(c:Comment)<-[:Wrote]-(u:User) OPTIONAL MATCH (c:Comment)-[love:Love]-(lover:User) WITH author, u, lover, p, numLikes, c, count(DISTINCT love) as loveComment WITH author, p, numLikes, collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user })[..20] as comments RETURN p.id, p.hash, p.description, p.text, numLikes, author.name, comments;",
+			"MATCH (author:User)-[:CREATE]->(p:Post {id: $id}) OPTIONAL MATCH (p)-[:CONTAINS]-(m:Media) OPTIONAL MATCH (p)<-[:LIKE]-(likeUser:User) OPTIONAL MATCH (p)<-[:COMMENT]-(c:Comment)<-[:WROTE]-(u:User) OPTIONAL MATCH (c)-[love:LOVE]-(lover:User {name: $user}) WITH author, p, lover, COLLECT(m.hash) AS hash, COUNT(DISTINCT likeUser) AS numLikes, c, u, COUNT(DISTINCT love) AS loveComment WITH author, p, hash, numLikes, COLLECT({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name IS NOT NULL})[..20] AS comments RETURN p.id, hash, p.description, p.text, numLikes, author.name, comments;",
 			map[string]any{"id": id, "user": user})
 		if err != nil {
 			return nil, err
@@ -278,7 +284,7 @@ func GetPost(id string, user string) (model.Post, error) {
 // and respond with true if a relation (edge) exists
 // or with false if no relation exists
 func IsUserSubscrirerTo(id string, user string) (bool, error) {
-	res, err := MakeRequest("MATCH (a:User {name: $id})-[:Subscriber]->(b:User {name: $to}) RETURN a;",
+	res, err := MakeRequest("MATCH (a:User {name: $id})-[:SUBSCRIBER]->(b:User {name: $to}) RETURN a;",
 		map[string]any{"id": id, "to": user})
 	if err != nil {
 		return false, err
@@ -295,7 +301,7 @@ func IsUserSubscrirerTo(id string, user string) (bool, error) {
 func CommentPost(id string, user string, content string) (string, error) {
 	comment_id := helpers.Generate()
 
-	_, err := MakeRequest("CREATE (c:Comment {id: $comment_id, text: $content, timestamp: "+strconv.FormatInt(time.Now().Unix(), 10)+"}) WITH c MATCH (p:Post {id: $to}) MATCH (u:User {name: $id}) CREATE (c)-[:Comment]->(p) CREATE (u)-[:Wrote]->(c);", map[string]any{"id": user, "to": id, "comment_id": comment_id, "content": content})
+	_, err := MakeRequest("CREATE (c:Comment {id: $comment_id, text: $content, timestamp: "+strconv.FormatInt(time.Now().Unix(), 10)+"}) WITH c MATCH (p:Post {id: $to}) MATCH (u:User {name: $id}) CREATE (c)-[:COMMENT]->(p) CREATE (u)-[:WROTE]->(c);", map[string]any{"id": user, "to": id, "comment_id": comment_id, "content": content})
 	if err != nil {
 		return "", err
 	}
@@ -307,7 +313,7 @@ func CommentPost(id string, user string, content string) (string, error) {
 func CommentReply(id string, user string, content string, original_comment string) (string, error) {
 	comment_id := helpers.Generate()
 
-	_, err := MakeRequest("CREATE (new_comment:Comment {id: $comment_id, text: $content, timestamp: "+strconv.FormatInt(time.Now().Unix(), 10)+"}) WITH new_comment MATCH (:Comment {id: $to})<-[:Wrote]-(u:User) SET new_comment.replied_to = u.name WITH new_comment MATCH (u:User {name: $id}) WITH new_comment, u MATCH (o_comment:Comment {id: $original_comment}) CREATE (new_comment)-[:Reply]->(o_comment) CREATE (u)-[:Wrote]->(new_comment);", map[string]any{"id": user, "to": id, "comment_id": comment_id, "content": content, "original_comment": original_comment})
+	_, err := MakeRequest("CREATE (new_comment:Comment {id: $comment_id, text: $content, timestamp: "+strconv.FormatInt(time.Now().Unix(), 10)+"}) WITH new_comment MATCH (:Comment {id: $to})<-[:WROTE]-(u:User) SET new_comment.replied_to = u.name WITH new_comment MATCH (u:User {name: $id}) WITH new_comment, u MATCH (o_comment:Comment {id: $original_comment}) CREATE (new_comment)-[:REPLY]->(o_comment) CREATE (u)-[:WROTE]->(new_comment);", map[string]any{"id": user, "to": id, "comment_id": comment_id, "content": content, "original_comment": original_comment})
 	if err != nil {
 		return "", err
 	}
@@ -317,7 +323,7 @@ func CommentReply(id string, user string, content string, original_comment strin
 
 // GetComments sends 20 comments of a post
 func GetComments(id string, skip int, user string) ([]any, error) {
-	res, err := MakeRequest("MATCH (:Post {id: $id})<-[:Comment]-(c:Comment)<-[:Wrote]-(u:User) OPTIONAL MATCH (c:Comment)-[love:Love]-(lover:User) WITH  u, lover, c, count(DISTINCT love) as loveComment WITH collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user }) as comments SKIP $skip LIMIT 20 RETURN comments;",
+	res, err := MakeRequest("MATCH (:Post {id: $id})<-[:COMMENT]-(c:Comment)<-[:WROTE]-(u:User) OPTIONAL MATCH (c:Comment)-[love:LOVE]-(lover:User) WITH  u, lover, c, count(DISTINCT love) as loveComment WITH collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user }) as comments SKIP $skip LIMIT 20 RETURN comments;",
 		map[string]any{"id": id, "skip": skip, "user": user})
 	if err != nil {
 		return nil, err
@@ -332,7 +338,7 @@ func GetComments(id string, skip int, user string) ([]any, error) {
 
 // GetReply sends 20 replies of a comment
 func GetReply(post_id string, id string, skip int, user string) ([]any, error) {
-	res, err := MakeRequest("MATCH (:Post {id: $post_id})<-[:Comment]-(:Comment {id: $id})<-[:Reply]-(c:Comment)<-[:Wrote]-(u:User) OPTIONAL MATCH (c:Comment)-[love:Love]-(lover:User) WITH  u, lover, c, count(DISTINCT love) as loveComment WITH collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user }) as comments SKIP $skip LIMIT 20 RETURN comments;",
+	res, err := MakeRequest("MATCH (:Post {id: $post_id})<-[:COMMENT]-(:Comment {id: $id})<-[:REPLY]-(c:Comment)<-[:WROTE]-(u:User) OPTIONAL MATCH (c:Comment)-[love:LOVE]-(lover:User) WITH  u, lover, c, count(DISTINCT love) as loveComment WITH collect({id: c.id, text: c.text, timestamp: c.timestamp, user: u.name, love: loveComment, me_loved: lover.name = $user }) as comments SKIP $skip LIMIT 20 RETURN comments;",
 		map[string]any{"post_id": post_id, "id": id, "skip": skip, "user": user})
 	if err != nil {
 		return nil, err
@@ -349,7 +355,8 @@ func GetReply(post_id string, id string, skip int, user string) ([]any, error) {
 func CreatePost(user string, tag string, legend string, hash []string) (string, error) {
 	id := helpers.Generate()
 
-	_, err := MakeRequest("CREATE (p:Post {id: $id, text: $text, description: '', hash: $hash}) WITH p MERGE (t:Tag {name: $tag}) CREATE (p)-[r:Show]->(t) WITH p MATCH (u:User) WHERE u.name = $user CREATE (u)-[r:Create]->(p) RETURN type(r);", map[string]any{"id": id, "user": user, "tag": tag, "text": legend, "hash": hash})
+	_, err := MakeRequest("CREATE (p:Post {id: $id, text: $text, description: ''}) FOREACH (	hash IN $hashArray | MERGE (m:Media {type: 'image, hash: hash}) CREATE (p)-[:CONTAINS]->(m)	) WITH p MERGE (t:Tag {name: $tag}) CREATE (p)-[r:SHOW]->(t) WITH p MATCH (u:User {name: $user}) CREATE (u)-[r:CREATE]->(p);",
+		map[string]any{"id": id, "user": user, "tag": tag, "text": legend, "hash": hash})
 	if err != nil {
 		return "", err
 	}
