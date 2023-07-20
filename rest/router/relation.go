@@ -10,8 +10,6 @@ import (
 	"github.com/Gravitalia/gravitalia/database"
 	"github.com/Gravitalia/gravitalia/helpers"
 	"github.com/Gravitalia/gravitalia/model"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 // RelationHandler re-routes to the requested handler
@@ -30,9 +28,9 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	jsonEncoder := json.NewEncoder(w)
 
 	// Check valid relation
-	relation := cases.Title(language.English, cases.Compact).String(strings.TrimPrefix(req.URL.Path, "/relation/"))
+	relation := strings.ToUpper(strings.TrimPrefix(req.URL.Path, "/relation/"))
 	if relation == "" || func() bool {
-		for _, v := range []string{"Like", "Subscriber", "Block", "Love", "View"} {
+		for _, v := range []string{"LIKE", "SUBSCRIBER", "BLOCK", "LOVE", "VIEW"} {
 			if v == relation {
 				return false
 			}
@@ -261,9 +259,9 @@ func Exists(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	jsonEncoder := json.NewEncoder(w)
 
-	relation := cases.Title(language.English, cases.Compact).String(strings.TrimPrefix(req.URL.Path, "/relation/"))
+	relation := strings.ToUpper(strings.TrimPrefix(req.URL.Path, "/relation/"))
 	if relation == "" || func() bool {
-		for _, v := range []string{"Like", "Subscriber", "Block", "Love", "Request"} {
+		for _, v := range []string{"LIKE", "SUBSCRIBER", "BLOCK", "LOVE", "REQUEST"} {
 			if v == relation {
 				return false
 			}
