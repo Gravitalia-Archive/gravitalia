@@ -74,7 +74,7 @@ pub async fn last_x_post(graph: Arc<Graph>, query: String, id: String) -> Result
 pub async fn jaccard_index(graph: Arc<Graph>, id: String, ids: Vec<String>) -> Result<Vec<Post>> {
     let ids = tokio::spawn(async move {
         let mut result = graph.execute(
-            neo_query("MATCH (u:User {name: $id})-[:LIKE]->(p:Post) WITH u, p LIMIT 10 MATCH (l:Post) WHERE l.id IN $list WITH l, p ORDER BY p.id DESC WITH collect(l) as posts, collect(p) as likedPosts CALL node_similarity.jaccard_pairwise(posts, likedPosts) YIELD node1, node2, similarity WITH node1, similarity ORDER BY similarity DESC LIMIT 15 OPTIONAL MATCH (a:User)-[:LIKE]->(node1) WITH node1, count(DISTINCT a) as numLikes MATCH (creator:User)-[:CREATE]-(node1)-[:CONTAINS]-(m:Media) WITH node1, numLikes, creator, m OPTIONAL MATCH (:User {name: $id})-[r:LIKE]-(node1) RETURN node1.id as id, node1.description as description, collect(m.hash) as hashes, numLikes, creator, CASE WHEN r IS NULL THEN false ELSE true END as meLiked;")
+            neo_query("MATCH (u:User {name: $id})-[:LIKE]->(p:Post) WITH u, p LIMIT 10 MATCH (l:Post) WHERE l.id IN $list WITH l, p ORDER BY p.id DESC WITH collect(l) as posts, collect(p) as likedPosts CALL node_similarity.jaccard_pairwise(posts, likedPosts) YIELD node1, node2, similarity WITH node1, similarity ORDER BY similarity DESC LIMIT 15 OPTIONAL MATCH (a:User)-[:LIKE]->(node1) WITH node1, count(DISTINCT a) as numLikes MATCH (creator:User)-[:CREATE]-(node1) MATCH (node1)-[:CONTAINS]->(media:Media) WITH node1, numLikes, creator, media OPTIONAL MATCH (:User {name: $id})-[r:LIKE]-(node1) RETURN node1.id as id, node1.description as description, collect(media.hash) as hashes, numLikes, creator, CASE WHEN r IS NULL THEN false ELSE true END as meLiked;")
             .param("id", id)
             .param("list", ids)
         ).await.unwrap();
@@ -84,12 +84,12 @@ pub async fn jaccard_index(graph: Arc<Graph>, id: String, ids: Vec<String>) -> R
         while let Ok(Some(row)) = result.next().await {
             post_list.push(
                 Post {
-                    id: row.get::<String>("id").unwrap(),
-                    description: row.get::<String>("description").unwrap(),
-                    author: row.get::<Node>("creator").unwrap().get::<String>("name").unwrap(),
-                    hash: row.get::<Vec<String>>("hashes").unwrap(),
-                    like: row.get::<i64>("numLikes").unwrap() as u32,
-                    me_liked: row.get::<bool>("meLiked").unwrap()
+                    id: row.get::<String>("id").unwrap_or_default(),
+                    description: row.get::<String>("description").unwrap_or_default(),
+                    author: row.get::<Node>("creator").unwrap().get::<String>("name").unwrap_or_default(),
+                    hash: row.get::<Vec<String>>("hashes").unwrap_or_default(),
+                    like: row.get::<i64>("numLikes").unwrap_or_default() as u32,
+                    me_liked: row.get::<bool>("meLiked").unwrap_or_default()
                 }
             )
         }
