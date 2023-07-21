@@ -162,10 +162,10 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 
 		if !stats.Public {
 			// If sub relation exists, remove it
-			res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:SUBSCRIBER]->(b) DELETE r FOREACH (x IN CASE WHEN r IS NULL THEN [1] ELSE [] END | NULL) RETURN NOT(r IS NULL);",
+			res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:SUBSCRIBER]->(b) WITH r, a, b WHERE r IS NOT NULL DELETE r RETURN NOT(r IS NULL);",
 				map[string]any{"id": vanity, "to": getbody.Id})
 			if err != nil {
-				log.Printf("(Relation) Got an error : %v", err)
+				log.Printf("(Relation) Cannot remove sub private: %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				jsonEncoder.Encode(model.RequestError{
 					Error:   true,
