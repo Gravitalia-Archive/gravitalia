@@ -115,11 +115,11 @@ pub async fn get_most_liked_posts(graph: Arc<Graph>) -> Result<Vec<Post>> {
 
             post_list.push(
                 Post {
-                    id: node.get::<String>("id").unwrap(),
-                    description: node.get::<String>("description").unwrap(),
-                    author: row.get::<String>("author").unwrap(),
-                    hash: node.get::<Vec<String>>("hash").unwrap(),
-                    like: row.get::<i64>("numLikes").unwrap() as u32,
+                    id: node.get::<String>("id").unwrap_or_default(),
+                    description: node.get::<String>("description").unwrap_or_default(),
+                    author: row.get::<String>("author").unwrap_or_default(),
+                    hash: node.get::<Vec<String>>("hash").unwrap_or_default(),
+                    like: row.get::<i64>("numLikes").unwrap_or_default() as u32,
                     me_liked: false
                 }
             )
