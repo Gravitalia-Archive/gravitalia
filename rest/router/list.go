@@ -71,7 +71,7 @@ func getList(w http.ResponseWriter, req *http.Request) {
 	if id == "SUBSCRIPTION" {
 		_, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 			result, err := transaction.Run(ctx,
-				"MATCH (:User {name: $id})-[:SUBSCRIBER]->(u:User) RETURN u.name;",
+				"MATCH (:User {name: $id})-[:SUBSCRIBER]->(u:User) RETURN DISTINCT(u.name);",
 				map[string]any{"id": vanity})
 			if err != nil {
 				return nil, err
@@ -99,7 +99,7 @@ func getList(w http.ResponseWriter, req *http.Request) {
 	} else {
 		_, err := database.Session.ExecuteWrite(ctx, func(transaction neo4j.ManagedTransaction) (any, error) {
 			result, err := transaction.Run(ctx,
-				"MATCH (u:User)-[:"+id+"]->(:User {name: $id}) RETURN u.name;",
+				"MATCH (u:User)-[:"+id+"]->(:User {name: $id}) RETURN DISTINCT(u.name);",
 				map[string]any{"id": vanity})
 			if err != nil {
 				return nil, err
