@@ -74,7 +74,7 @@ pub async fn last_x_post(graph: Arc<Graph>, query: String, id: String) -> Result
 pub async fn jaccard_index(graph: Arc<Graph>, id: String, ids: Vec<String>) -> Result<Vec<Post>> {
     let ids = tokio::spawn(async move {
         let mut result = graph.execute(
-            neo_query("MATCH (u:User {name: $id})-[:LIKE]->(p:Post) WITH u, p LIMIT 10 MATCH (l:Post) WHERE l.id IN $list WITH l, p ORDER BY p.id DESC WITH collect(l) as posts, collect(p) as likedPosts CALL node_similarity.jaccard_pairwise(posts, likedPosts) YIELD node1, node2, similarity WITH node1, similarity ORDER BY similarity DESC LIMIT 15 OPTIONAL MATCH (a:User)-[:LIKE]->(node1) WITH node1, count(DISTINCT a) as numLikes MATCH (creator:User)-[:CREATE]-(node1) MATCH (node1)-[:CONTAINS]->(media:Media) WITH node1, numLikes, creator, media OPTIONAL MATCH (:User {name: $id})-[r:LIKE]-(node1) RETURN node1.id as id, node1.description as description, collect(media.hash) as hashes, numLikes, creator, CASE WHEN r IS NULL THEN false ELSE true END as meLiked;")
+            neo_query("MATCH (u:User {name: $id})-[:LIKE]->(p:Post) WITH u, p LIMIT 10 MATCH (l:Post) WHERE l.id IN $list WITH l, p ORDER BY p.id DESC WITH collect(l) as posts, collect(p) as likedPosts CALL node_similarity.jaccard_pairwise(posts, likedPosts) YIELD node1, node2, similarity WITH node1, similarity ORDER BY similarity DESC LIMIT 15 OPTIONAL MATCH (a:User)-[:LIKE]->(node1) WITH node1, count(DISTINCT a) as numLikes MATCH (creator:User)-[:CREATE]-(node1)-[:CONTAINS]->(media:Media) WITH node1, numLikes, creator, media OPTIONAL MATCH (:User {name: $id})-[r:LIKE]-(node1) RETURN node1.id as id, node1.description as description, collect(media.hash) as hashes, numLikes, creator, CASE WHEN r IS NULL THEN false ELSE true END as meLiked;")
             .param("id", id)
             .param("list", ids)
         ).await.unwrap();
@@ -105,7 +105,7 @@ pub async fn jaccard_index(graph: Arc<Graph>, id: String, ids: Vec<String>) -> R
 pub async fn get_most_liked_posts(graph: Arc<Graph>) -> Result<Vec<Post>> {
     let ids = tokio::spawn(async move {
         let mut result = graph.execute(
-            neo_query("MATCH (u:User)-[:CREATE]->(p:Post)<-[r:LIKE]-(:User) MATCH (p)-[:CONTAINS]-(media:Media) WITH p, count(DISTINCT r) as numLikes, u.name AS author, collect(media.hash) as hashes ORDER BY numLikes DESC LIMIT 20 RETURN p, numLikes, author, hashes;")
+            neo_query("MATCH (u:User)-[:CREATE]->(p:Post)<-[r:LIKE]-(:User) WITH p, count(DISTINCT r) as numLikes, u.name AS author ORDER BY numLikes DESC LIMIT 20 MATCH (p)-[:CONTAINS]->(media:Media) RETURN p, numLikes, author, collect(media.hash) as hashes;")
         ).await.unwrap();
 
         let mut post_list: Vec<Post> = Vec::new();
