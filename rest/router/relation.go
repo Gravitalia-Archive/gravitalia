@@ -117,7 +117,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Remove subscription relations
-	if relation == "Block" {
+	if relation == "BLOCK" {
 		_, err = database.MakeRequest("MATCH (:User {name: $id})-[r:SUBSCRIBER]-(:User {name: $to}) DELETE r;",
 			map[string]any{"id": vanity, "to": getbody.Id})
 		if err != nil {
@@ -161,7 +161,29 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		}
 
 		if !stats.Public {
-			res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:REQUEST]->(b) DELETE r FOREACH (x IN CASE WHEN r IS NULL THEN [1] ELSE [] END |	CREATE (a)-[:REQUEST]->(b)	) RETURN NOT(r IS NULL);",
+			// If sub relation exists, remove it
+			res, err := database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:SUBSCRIBER]->(b) DELETE r FOREACH (x IN CASE WHEN r IS NULL THEN [1] ELSE [] END | NULL) RETURN NOT(r IS NULL);",
+				map[string]any{"id": vanity, "to": getbody.Id})
+			if err != nil {
+				log.Printf("(Relation) Got an error : %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				jsonEncoder.Encode(model.RequestError{
+					Error:   true,
+					Message: ErrorWithDatabase,
+				})
+				return
+			}
+
+			if res.(bool) {
+				jsonEncoder.Encode(model.RequestError{
+					Error:   false,
+					Message: OkDeletedRelation,
+				})
+				return
+			}
+
+			// Remove or create sub request
+			res, err = database.MakeRequest("MATCH (a:User {name: $id}) MATCH (b:User {name: $to}) OPTIONAL MATCH (a)-[r:REQUEST]->(b) DELETE r FOREACH (x IN CASE WHEN r IS NULL THEN [1] ELSE [] END |	CREATE (a)-[:REQUEST]->(b)	) RETURN NOT(r IS NULL);",
 				map[string]any{"id": vanity, "to": getbody.Id})
 			if err != nil {
 				log.Printf("(Relation) Got an error : %v", err)
@@ -220,7 +242,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 		})
 	} else {
 		// Notify post author if a new like appears
-		if relation == "Like" {
+		if relation == "LIKE" {
 			res, _ := database.MakeRequest("MATCH (u:User)-[:CREATE]-(:Post {id: $id}) RETURN u.name;",
 				map[string]any{"id": getbody.Id})
 			if err != nil {
