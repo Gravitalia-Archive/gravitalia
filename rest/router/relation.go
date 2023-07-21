@@ -174,7 +174,7 @@ func Relation(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			if res.(bool) {
+			if res != nil || res.(bool) {
 				jsonEncoder.Encode(model.RequestError{
 					Error:   false,
 					Message: OkDeletedRelation,
