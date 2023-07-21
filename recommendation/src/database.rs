@@ -105,7 +105,7 @@ pub async fn jaccard_index(graph: Arc<Graph>, id: String, ids: Vec<String>) -> R
 pub async fn get_most_liked_posts(graph: Arc<Graph>) -> Result<Vec<Post>> {
     let ids = tokio::spawn(async move {
         let mut result = graph.execute(
-            neo_query("MATCH (u:User)-[:CREATE]->(p:Post)<-[r:LIKE]-(:User) WITH p, count(DISTINCT r) as numLikes, u.name AS author ORDER BY numLikes DESC LIMIT 20 RETURN p, numLikes, author;")
+            neo_query("MATCH (u:User)-[:CREATE]->(p:Post)<-[r:LIKE]-(:User) MATCH (p)-[:CONTAINS]-(media:Media) WITH p, count(DISTINCT r) as numLikes, u.name AS author, collect(media.hash) as hashes ORDER BY numLikes DESC LIMIT 20 RETURN p, numLikes, author, hashes;")
         ).await.unwrap();
 
         let mut post_list: Vec<Post> = Vec::new();
@@ -118,7 +118,7 @@ pub async fn get_most_liked_posts(graph: Arc<Graph>) -> Result<Vec<Post>> {
                     id: node.get::<String>("id").unwrap_or_default(),
                     description: node.get::<String>("description").unwrap_or_default(),
                     author: row.get::<String>("author").unwrap_or_default(),
-                    hash: node.get::<Vec<String>>("hash").unwrap_or_default(),
+                    hash: node.get::<Vec<String>>("hashes").unwrap_or_default(),
                     like: row.get::<i64>("numLikes").unwrap_or_default() as u32,
                     me_liked: false
                 }
