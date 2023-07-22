@@ -3,6 +3,7 @@ package router
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -83,8 +84,10 @@ func getComment(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	stats, err := database.GetProfile(post.Author)
+	// Get user profile
+	stats, err := database.GetBasicProfile(post.Author)
 	if err != nil || stats.Suspended {
+		log.Printf("(getPost) cannot get post author: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
@@ -93,12 +96,12 @@ func getComment(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var allow_post_access bool
-	if stats.Public {
-		allow_post_access = true
-	} else if !stats.Public && req.Header.Get("authorization") != "" {
-		is, err := database.IsUserSubscrirerTo(post.Author, vanity)
+	// Check if viewer is following user
+	var viewerFollows bool
+	if req.Header.Get("authorization") != "" {
+		viewerFollows, err = database.IsUserSubscrirerTo(vanity, post.Author)
 		if err != nil {
+			log.Printf("(getPost) cannot know if user is subscriber: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			jsonEncoder.Encode(model.RequestError{
 				Error:   true,
@@ -106,12 +109,23 @@ func getComment(w http.ResponseWriter, req *http.Request) {
 			})
 			return
 		}
-
-		allow_post_access = is
 	}
 
-	if !allow_post_access {
-		w.WriteHeader(http.StatusBadRequest)
+	// Check if account is blocked
+	isBlocked, err := isAccountBlocked(vanity, post.Author)
+	if err != nil {
+		log.Printf("(getPost) cannot know if users are blocked: %v", err)
+		isBlocked = false
+	}
+
+	// Check if viewer have access to the user's post
+	allowAccess := stats.Public || viewerFollows || (req.Header.Get("authorization") != "" && post.Author == vanity)
+	if isBlocked {
+		allowAccess = false
+	}
+
+	if !allowAccess {
+		w.WriteHeader(http.StatusUnauthorized)
 		jsonEncoder.Encode(model.RequestError{
 			Error:   true,
 			Message: ErrorInvalidPostAccess,
