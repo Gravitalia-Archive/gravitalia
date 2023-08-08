@@ -92,7 +92,6 @@ func OAuth(zipkinClient *zipkinhttp.Client) http.HandlerFunc {
 				var data model.RequestError
 				json.Unmarshal(body, &data)
 				if data.Error {
-					fmt.Println(data)
 					w.WriteHeader(http.StatusBadRequest)
 					jsonEncoder.Encode(model.RequestError{
 						Error:   true,
@@ -110,10 +109,12 @@ func OAuth(zipkinClient *zipkinhttp.Client) http.HandlerFunc {
 					})
 					return
 				}
+				
 				var user model.AuthaUser
 				json.Unmarshal(body, &user)
 				if user.Vanity == "" {
-					fmt.Printf("Vanity: %v", data)
+					fmt.Println(body)
+					fmt.Println(user)
 					w.WriteHeader(http.StatusBadRequest)
 					jsonEncoder.Encode(model.RequestError{
 						Error:   true,
