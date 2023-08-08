@@ -91,6 +91,7 @@ func OAuth(zipkinClient *zipkinhttp.Client) http.HandlerFunc {
 				var data model.RequestError
 				json.Unmarshal(body, &data)
 				if data.Error {
+					fmt.Println(data)
 					w.WriteHeader(http.StatusBadRequest)
 					jsonEncoder.Encode(model.RequestError{
 						Error:   true,
