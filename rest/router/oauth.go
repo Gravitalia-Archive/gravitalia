@@ -100,6 +100,8 @@ func OAuth(zipkinClient *zipkinhttp.Client) http.HandlerFunc {
 					return
 				}
 
+				fmt.Printf("Token: %v", data.Message)
+
 				body, err = makeRequest(zipkinClient, os.Getenv("OAUTH_API")+"/users/@me", "GET", nil, data.Message)
 				if err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
