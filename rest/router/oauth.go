@@ -1,7 +1,6 @@
 package router
 
 import (
-	"fmt"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -100,8 +99,6 @@ func OAuth(zipkinClient *zipkinhttp.Client) http.HandlerFunc {
 					return
 				}
 
-				fmt.Printf("Token: %v", data.Message)
-
 				body, err = makeRequest(zipkinClient, os.Getenv("OAUTH_API")+"/users/@me", "GET", nil, data.Message)
 				if err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
@@ -115,12 +112,10 @@ func OAuth(zipkinClient *zipkinhttp.Client) http.HandlerFunc {
 				var user model.AuthaUser
 				json.Unmarshal(body, &user)
 				if user.Vanity == "" {
-					fmt.Println(body)
-					fmt.Println(user)
 					w.WriteHeader(http.StatusBadRequest)
 					jsonEncoder.Encode(model.RequestError{
 						Error:   true,
-						Message: "Invalid code",
+						Message: "Invalid JWT",
 					})
 					return
 				}
