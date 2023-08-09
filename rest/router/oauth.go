@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -91,6 +92,7 @@ func OAuth(zipkinClient *zipkinhttp.Client) http.HandlerFunc {
 				var data model.RequestError
 				json.Unmarshal(body, &data)
 				if data.Error {
+					log.Printf("(OAuth) Cannot get code: %v", data.Message)
 					w.WriteHeader(http.StatusBadRequest)
 					jsonEncoder.Encode(model.RequestError{
 						Error:   true,
